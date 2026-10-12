@@ -378,6 +378,10 @@
                         <span style="font-size: 14px; margin-bottom: 5px;">🔫 AK-47</span>
                         <button class="btn btn-small" id="buy-ak47-btn" onclick="buyWeapon('ak47', 50)" style="font-size: 11px; padding: 5px;">50 🪙</button>
                     </div>
+                    <div class="list-item" style="flex-direction: column;">
+                        <span style="font-size: 14px; margin-bottom: 5px;">🚀 Гранатомёт</span>
+                        <button class="btn btn-small" id="buy-bazooka-btn" onclick="buyWeapon('bazooka', 150)" style="font-size: 11px; padding: 5px;">150 🪙</button>
+                    </div>
                 </div>
 
                 <div id="shop-hats" class="shop-container" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; max-height: 280px; overflow-y: auto;">
@@ -1090,6 +1094,7 @@
             if (id !== 'pistol' && !ownedWeapons.includes(id)) return;
             currentWeapon = id;
             localStorage.setItem('cg_current_weapon', id);
+            setAmmoForWeapon(id);
             playerWeapon.clear();
             playerWeapon.add(createWeaponModel(id));
             
@@ -1230,6 +1235,7 @@
             updateBtn('buy-rifle-btn', ownedWeapons.includes('rifle'), currentWeapon === 'rifle', 20);
             updateBtn('buy-knife-btn', ownedWeapons.includes('knife'), currentWeapon === 'knife', 20);
             updateBtn('buy-ak47-btn', ownedWeapons.includes('ak47'), currentWeapon === 'ak47', 50);
+            updateBtn('buy-bazooka-btn', ownedWeapons.includes('bazooka'), currentWeapon === 'bazooka', 150);
 
             updateBtn('buy-hat-none-btn', true, currentHat === 'none', 0);
             updateBtn('buy-hat-classic-btn', ownedHats.includes('classic'), currentHat === 'classic', 15);
@@ -1285,15 +1291,72 @@
         nickInput.value = localStorage.getItem('cg_nick') || 'Player';
         document.getElementById('level-display').innerText = `Уровень: ${localStorage.getItem('cg_lvl') || 1}`;
 
+        function setAmmoForWeapon(w) {
+            maxAmmo = (w === 'bazooka') ? 5 : 30;
+            ammo = maxAmmo;
+            isReloading = false;
+            document.getElementById('ammo-hud').innerText = `${ammo} / ∞`;
+        }
+
         function startReload() {
             if (isReloading || ammo >= maxAmmo) return;
             isReloading = true;
             addChatMessage("Перезарядка...");
+            const reloadTime = (currentWeapon === 'bazooka') ? 2500 : 1500;
             setTimeout(() => {
                 ammo = maxAmmo;
                 isReloading = false;
                 document.getElementById('ammo-hud').innerText = `${ammo} / ∞`;
-            }, 1500);
+            }, reloadTime);
+        }
+
+        function explode(pos, shooterName) {
+            const radius = 6;
+            const boom = new THREE.Mesh(
+                new THREE.SphereGeometry(1, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.9 })
+            );
+            boom.position.copy(pos);
+            scene.add(boom);
+            const light = new THREE.PointLight(0xff6600, 8, 25);
+            light.position.copy(pos);
+            scene.add(light);
+            let boomT = 0;
+            const grow = setInterval(() => {
+                boomT += 0.08;
+                boom.scale.setScalar(1 + boomT * 5);
+                boom.material.opacity = Math.max(0, 0.9 - boomT);
+                light.intensity = Math.max(0, 8 - boomT * 10);
+                if (boomT >= 1) {
+                    clearInterval(grow);
+                    scene.remove(boom); scene.remove(light);
+                }
+            }, 30);
+
+            for (let id in remotePlayers) {
+                const rp = remotePlayers[id];
+                const center = rp.position.clone().add(new THREE.Vector3(0, 1, 0));
+                const dist = pos.distanceTo(center);
+                if (dist < radius && database) {
+                    const dmg = Math.max(10, Math.round(100 - (dist / radius) * 100));
+                    database.ref(`rooms/${currentRoomId}/players/${id}/hp`).transaction((current) => {
+                        let oldVal = (typeof current === 'object') ? (current.val ?? 100) : (current ?? 100);
+                        if (oldVal <= 0) return;
+                        return { val: Math.max(0, oldVal - dmg), by: shooterName || 'Player' };
+                    });
+                }
+            }
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const en = enemies[i];
+                const dist = pos.distanceTo(en.position.clone().add(new THREE.Vector3(0, 1, 0)));
+                if (dist < radius) {
+                    scene.remove(en);
+                    enemies.splice(i, 1);
+                    teamPoints++;
+                    updateHUD();
+                }
+            }
         }
 
         function createPropModel(type) {
@@ -1469,6 +1532,24 @@
                 mag.position.set(0, -0.2, -0.1); mag.rotation.x = -0.3; gun.add(mag);
                 const wood = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.12, 0.35), new THREE.MeshPhongMaterial({color: 0x5d4037}));
                 wood.position.set(0, -0.08, -0.2); gun.add(wood);
+            } else if (type === 'bazooka') {
+                const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.2, 16), new THREE.MeshPhongMaterial({color: 0x2e4a11}));
+                tube.rotation.x = Math.PI / 2;
+                gun.add(tube);
+                const wideBore = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.13, 0.3, 16), new THREE.MeshPhongMaterial({color: 0x1a1a1a}));
+                wideBore.rotation.x = Math.PI / 2;
+                wideBore.position.z = -0.7;
+                gun.add(wideBore);
+                const grip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.12), new THREE.MeshPhongMaterial({color: 0x111111}));
+                grip.position.set(0, -0.22, 0.15);
+                gun.add(grip);
+                const scope = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.3), new THREE.MeshPhongMaterial({color: 0x111111}));
+                scope.position.set(0, 0.18, 0.2);
+                gun.add(scope);
+                const rocket = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.35, 12), new THREE.MeshPhongMaterial({color: 0xcc2222}));
+                rocket.rotation.x = -Math.PI / 2;
+                rocket.position.z = 0.72;
+                gun.add(rocket);
             } else {
                 const body = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.5), new THREE.MeshPhongMaterial({color: col}));
                 gun.add(body);
@@ -1882,9 +1963,11 @@
                         if (w === 'pistol') label = '🔫 ПИСТОЛЕТ';
                         if (w === 'gold_pistol') label = '✨ ЗОЛОТОЙ ПИСТОЛЕТ';
                         if (w === 'knife') label = '🔪 НОЖ';
+                        if (w === 'bazooka') label = '🚀 ГРАНАТОМЁТ';
                         div.innerText = label;
                         div.onclick = () => {
                             currentWeapon = w;
+                            setAmmoForWeapon(w);
                             playerWeapon.clear();
                             playerWeapon.add(createWeaponModel(w));
                             weaponMenu.style.display = 'none';
@@ -2427,11 +2510,16 @@
                 document.getElementById('ammo-hud').innerText = `${ammo} / ∞`;
                 if (ammo <= 0) startReload();
             }
-            const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({color: 0xffff00}));
-            bullet.position.copy(fromPos);
-            const speed = isEnemy ? 0.6 : (currentWeapon === 'rifle' ? 2.8 : 1.6);
+            const isRocket = !isEnemy && currentWeapon === 'bazooka';
+            const bullet = new THREE.Mesh(
+                isRocket ? new THREE.SphereGeometry(0.3, 12, 12) : new THREE.SphereGeometry(0.12),
+                new THREE.MeshBasicMaterial({color: isRocket ? 0xff4400 : 0xffff00})
+            );
+            bullet.position.copy(fromPos).add(targetDir.clone().multiplyScalar(isRocket ? 0.9 : 0));
+            const speed = isEnemy ? 0.6 : (currentWeapon === 'rifle' ? 2.8 : (isRocket ? 1.1 : 1.6));
             bullet.userData.velocity = targetDir.clone().multiplyScalar(speed);
             bullet.userData.isEnemy = isEnemy;
+            bullet.userData.isRocket = isRocket;
             bullet.userData.shooter = shooterName || (isEnemy ? "Bot" : nickInput.value);
             scene.add(bullet);
             (isEnemy ? enemyBullets : bullets).push(bullet);
@@ -2792,7 +2880,36 @@ shopChicken.userData.rightLeg.rotation.x = 0;
                 for(let i = bullets.length - 1; i >= 0; i--) {
                     const b = bullets[i]; b.position.add(b.userData.velocity);
                     if(b.position.length() > 200) { scene.remove(b); bullets.splice(i, 1); continue; }
-                    
+
+                    // Ракета гранатомёта: взрывается при столкновении с чем угодно
+                    if (b.userData.isRocket) {
+                        let boom = false;
+                        if (b.position.y < 0.15) boom = true;
+                        if (!boom) {
+                            for(let m of mapObjects) {
+                                const dxz = new THREE.Vector2(b.position.x - m.position.x, b.position.z - m.position.z).length();
+                                if (dxz < m.userData.bound && b.position.y < m.userData.top) { boom = true; break; }
+                            }
+                        }
+                        if (!boom) {
+                            for(let p of props) {
+                                if (b.position.distanceTo(p.position) < 1.4) { boom = true; break; }
+                            }
+                        }
+                        if (!boom) {
+                            for(let id in remotePlayers) {
+                                const rp = remotePlayers[id];
+                                if (b.position.distanceTo(rp.position.clone().add(new THREE.Vector3(0, 1, 0))) < 1.4) { boom = true; break; }
+                            }
+                        }
+                        if (boom) {
+                            explode(b.position.clone(), b.userData.shooter);
+                            scene.remove(b); bullets.splice(i, 1);
+                            continue;
+                        }
+                        continue;
+                    }
+
                     for(let id in remotePlayers) {
                         const rp = remotePlayers[id];
                         if (b.position.distanceTo(rp.position.clone().add(new THREE.Vector3(0, 1, 0))) < 1.2) {
@@ -2913,6 +3030,7 @@ shopChicken.userData.rightLeg.rotation.x = 0;
         // Инициализация визуальных скинов
         playerWeapon.clear();
         playerWeapon.add(createWeaponModel(currentWeapon));
+        setAmmoForWeapon(currentWeapon);
         [menuChicken, playerModel].forEach(m => {
             updateHatMesh(m, currentHat);
             updateGlassMesh(m, currentGlass);
