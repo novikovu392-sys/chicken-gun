@@ -308,7 +308,8 @@
         .modal-close { color: #c4d2a8; }
         .tab-btn.active, .shop-tab.active { border-color: #a7b58b; color: #e1e9d3; background: #526344; }
         #shop-preview { border-color: #87966b; }
-        #crosshair { border-radius: 1px; border-color: #e4ead8; }
+        #crosshair { border-radius: 50%; border-color: #e4ead8; }
+        #crosshair.square { border-radius: 0; }
         #hp-bar { border-color: #a7b58b; }
         #hp-fill { background: #9aa96f; }
 
@@ -357,6 +358,169 @@
         #menu #nickname-input { border-bottom-color: #ffde00; color: #ffde00; }
         #menu .btn { background: #ffde00; color: #111; box-shadow: 0 4px 0 #b39b00; }
         #menu .btn:hover { background: #fff; color: #111; }
+
+        /* Компактное меню для сенсорных экранов и невысоких окон */
+        @media (pointer: coarse), (max-height: 760px) {
+            #shop-modal {
+                box-sizing: border-box !important;
+                width: min(94vw, 760px) !important;
+                max-width: 94vw !important;
+                max-height: 92dvh !important;
+                overflow-y: auto !important;
+                padding: 12px !important;
+                border-width: 2px;
+                border-radius: 14px;
+            }
+            #shop-modal h2 { font-size: clamp(18px, 2.4vh, 25px); margin: 0 28px 10px; }
+            #shop-modal .shop-tabs { gap: 6px; margin-bottom: 8px; }
+            #shop-modal .shop-tab { padding: 7px 10px; font-size: 13px; }
+            #shop-modal .shop-layout { gap: 10px; }
+            #shop-modal .shop-preview-side { width: 140px; }
+            #shop-modal #shop-preview-container { height: 190px !important; }
+            #shop-modal #shop-weapons { max-height: 56dvh !important; }
+            #shop-modal .weapon-subtabs { gap: 5px; margin-bottom: 8px; }
+            #shop-modal .weapon-subtab { min-width: 0; padding: 8px 6px; font-size: 12px; }
+            #shop-modal #weapon-inventory-list,
+            #shop-modal #weapon-market-list { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 7px; }
+            #shop-modal .weapon-card { min-height: 112px; padding: 8px 6px; gap: 6px; }
+            #shop-modal .case-card { padding: 12px; gap: 7px; }
+            #shop-modal .case-card .btn { padding: 9px 14px; font-size: 14px; }
+            #shop-modal .btn { padding: 9px 14px; font-size: 15px; }
+            #shop-modal .btn-small { padding: 7px 10px; font-size: 12px; }
+            #shop-modal .list-item { padding: 8px !important; }
+        }
+        @media (pointer: coarse) and (max-width: 700px) {
+            #shop-modal { width: 94vw !important; max-width: 94vw !important; max-height: 90dvh !important; }
+            #shop-modal .shop-layout { display: block; }
+            #shop-modal .shop-preview-side { display: none; }
+            #shop-modal #shop-weapons { max-height: 62dvh !important; }
+            #shop-modal #weapon-inventory-list,
+            #shop-modal #weapon-market-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            #shop-modal .shop-tab { flex: 1 1 28%; text-align: center; }
+            #shop-modal .weapon-subtab { flex: 1 1 28%; }
+        }
+        @media (max-height: 520px) {
+            #shop-modal { max-height: 94dvh !important; padding: 8px !important; }
+            #shop-modal #shop-weapons { max-height: 68dvh !important; }
+            #shop-modal #shop-preview-container { height: 130px !important; }
+        }
+
+
+        .case-spin-overlay{position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:14px}
+        .case-spin-panel{width:min(760px,96vw);background:#151c16;border:2px solid #d7df32;border-radius:16px;padding:clamp(14px,3vw,28px);text-align:center;color:#f5f5e8;box-shadow:0 12px 50px #000}
+        .case-spin-track{height:clamp(116px,25vw,170px);position:relative;overflow:hidden;border:1px solid #7c896c;border-radius:10px;background:linear-gradient(90deg,#20291f,#303c2b,#20291f);margin:18px 0}
+        .case-spin-track:before{content:"";position:absolute;z-index:2;left:50%;top:0;bottom:0;width:4px;transform:translateX(-50%);background:#ffe43a;box-shadow:0 0 12px #ffe43a}
+        .case-spin-strip{height:100%;display:flex;will-change:transform;transform:translateX(0)}
+        .case-spin-item{flex:0 0 108px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-right:1px solid #ffffff16;font-size:13px;font-weight:700}
+        .case-spin-item span{font-size:clamp(30px,6vw,48px)}
+        .weapon-preview{display:block;flex:0 0 auto;overflow:visible;margin:0 auto;}
+        .case-spin-item .weapon-preview{width:82px!important;height:50px!important;} 
+        .case-spin-result{font-size:clamp(18px,4vw,24px);font-weight:800;color:#e5ed72;margin:12px 0}
+        @media(max-width:600px){.case-spin-panel{width:100%}.case-spin-item{flex-basis:92px}.case-spin-track{height:116px}}
+
+</style>
+<style>
+/* Каталог прокручивается отдельно, а счётчик монет и тестовая кнопка
+   постоянно находятся внизу окна магазина. */
+#shop-modal {
+  box-sizing: border-box !important;
+  width: min(560px, 92vw) !important;
+  max-width: 92vw !important;
+  height: min(76vh, 650px) !important;
+  max-height: 86dvh !important;
+  padding: 12px !important;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+}
+#shop-modal > h2 {
+  flex: 0 0 auto;
+  font-size: clamp(18px, 2.2vh, 24px);
+  margin: 2px 28px 8px;
+}
+#shop-modal .shop-layout {
+  display: block;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+#shop-modal .shop-items-side {
+  display: block;
+  min-height: 0;
+  overflow: visible !important;
+}
+#shop-modal .shop-tabs {
+  gap: 5px;
+  margin: 0 0 7px !important;
+}
+#shop-modal .shop-tab { padding: 6px 8px; font-size: 12px; }
+#shop-modal .shop-container {
+  box-sizing: border-box;
+  min-height: 0;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+  padding: 6px !important;
+}
+#shop-modal #shop-weapons { display: block; }
+#shop-modal .weapon-subtabs {
+  position: static;
+  z-index: 1;
+  background: #101710;
+  padding: 4px 0 7px;
+}
+#shop-modal .weapon-subpage {
+  min-height: 0;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+#shop-modal #weapon-tab-inventory,
+#shop-modal #weapon-tab-market,
+#shop-modal #weapon-tab-cases {
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+#shop-modal #weapon-market-list,
+#shop-modal #weapon-inventory-list { padding-bottom: 12px; }
+#shop-modal .case-drops { max-height: none !important; overflow: visible !important; }
+#shop-modal .shop-preview-side { display: none !important; }
+#shop-modal #shop-footer {
+  position: relative;
+  z-index: 5;
+  flex: 0 0 auto;
+  width: 100%;
+  margin-top: auto;
+  padding: 8px 0 2px;
+  text-align: center;
+  background: #101710;
+  border-top: 1px solid rgba(255,222,0,.25);
+}
+@media (max-width: 700px), (pointer: coarse) {
+  #shop-modal {
+    width: min(440px, 92vw) !important;
+    height: min(76dvh, 650px) !important;
+    max-height: 88dvh !important;
+    padding: 9px !important;
+  }
+  #shop-modal .shop-tabs { flex-wrap: wrap; }
+  #shop-modal .shop-tab { flex: 1 1 27%; text-align: center; }
+  #shop-modal #weapon-inventory-list,
+  #shop-modal #weapon-market-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  #shop-modal .weapon-card { min-height: 94px; padding: 6px 4px; }
+}
+@media (max-height: 520px) {
+  #shop-modal { height: 92dvh !important; max-height: 92dvh !important; }
+}
 </style>
 </head>
 <body oncontextmenu="return false;">
@@ -406,7 +570,7 @@
         <p id="join-pass-error" style="color: #ff3333; text-align: center; display: none; margin-top: 10px;">Неверный пароль!</p>
     </div>
 
-    <div id="shop-modal" class="modal" style="max-width: 600px; width: 95%;">
+    <div id="shop-modal" class="modal" style="display: none; max-width: 600px; width: 95%;">
         <span class="modal-close" onclick="closeModals()">&times;</span>
         <h2>МАГАЗИН</h2>
         
@@ -433,11 +597,18 @@
                     <div id="weapon-tab-cases" class="weapon-subpage" style="display:none">
                         <div class="case-card" onclick="openCaseInfo()">
                             <div style="font-size:48px">📦</div>
-                            <div><strong>Оружейный кейс</strong><p style="margin:6px 0;color:#b9c1b2;font-size:13px">Случайное оружие. Предмет сразу попадёт в инвентарь.</p></div>
+                            <div><strong>Оружейный кейс</strong><p style="margin:6px 0;color:#b9c1b2;font-size:13px">Только обычное оружие. Предмет сразу попадёт в инвентарь.</p></div>
                             <button class="btn btn-small" onclick="event.stopPropagation(); openWeaponCase()">ОТКРЫТЬ · 50 🪙</button>
                         </div>
-                        <div style="font-size:12px;color:#9da695;margin:8px 0">Возможные предметы:</div>
-                        <div class="case-drops">🔫 Пистолет · ✨ Золотой пистолет · 🔥 Автомат · 🔪 Нож · AK-47 · 🚀 Гранатомёт</div>
+                        <div style="font-size:12px;color:#9da695;margin:8px 0">Возможные предметы и шансы выпадения обычного оружейного кейса:</div>
+                        <div class="case-drops" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:7px">
+                            <div style="color:#b8bec7;border:1px solid #b8bec7;border-radius:7px;padding:7px">🔫 Пистолет · Обычное · 40%</div>
+                            <div style="color:#55c878;border:1px solid #55c878;border-radius:7px;padding:7px">🔥 Автомат · Необычное · 25%</div>
+                            <div style="color:#48a9ff;border:1px solid #48a9ff;border-radius:7px;padding:7px">🔪 Нож · Редкое · 15%</div>
+                            <div style="color:#b27aff;border:1px solid #b27aff;border-radius:7px;padding:7px">🔫 AK-47 · Эпическое · 10%</div>
+                            <div style="color:#ffb52e;border:1px solid #ffb52e;border-radius:7px;padding:7px">✨ Золотой пистолет · Легендарное · 7%</div>
+                            <div style="color:#ff5964;border:1px solid #ff5964;border-radius:7px;padding:7px">🚀 Гранатомёт · Мифическое · 3%</div>
+                        </div>
                     </div>
                     <div id="weapon-tab-market" class="weapon-subpage" style="display:none">
                         <div class="market-head"><span>Предметы игроков</span><button class="btn btn-small" onclick="refreshWeaponMarket()">ОБНОВИТЬ</button></div>
@@ -631,7 +802,6 @@
                     <div class="list-item" style="flex-direction: column;"><span style="font-size: 14px;">🎒 Т-Оранжевый</span><button class="btn btn-small" id="buy-backpack-darkorange_backpack-btn" onclick="buyBackpack('darkorange_backpack', 50)" style="font-size: 11px;">50 🪙</button></div>
                 </div>
 
-                <p style="text-align: center; margin-top: 15px; font-size: 18px; color: #ffde00;">Монеты: <span id="coins-display">0</span></p>
             </div>
 
             <div class="shop-preview-side">
@@ -643,6 +813,11 @@
                     <div id="active-items-container" style="max-height: 150px; overflow-y: auto;"></div>
                 </div>
             </div>
+        </div>
+
+        <div id="shop-footer" style="flex:0 0 auto; text-align:center; padding:8px 0 2px; background:#101710; border-top:1px solid rgba(255,222,0,.25);">
+            <p style="margin:4px 0 8px; font-size:18px; color:#ffde00;">Монеты: <span id="coins-display">0</span></p>
+            <button class="btn btn-small" id="test-add-coins-btn" onclick="testAddCoins()" style="background:#806b2e;border:1px solid #ffde00;color:#fff3b0;padding:8px 14px;font-weight:bold;">🧪 ТЕСТ: +1000 МОНЕТ</button>
         </div>
     </div>
 
@@ -699,9 +874,16 @@
         <span class="modal-close" onclick="document.getElementById('settings-modal').style.display='none'">&times;</span>
         <h2>НАСТРОЙКИ</h2>
         <label class="list-item"><span>Сенсорное управление</span><input type="checkbox" id="mobile-controls-toggle" checked></label>
+        <label class="list-item"><span>Прицел</span><select id="crosshair-shape"><option value="circle">Круглый</option><option value="square">Квадратный</option></select></label>
+        <button class="btn btn-small" id="customize-controls-btn" type="button">НАСТРОИТЬ КНОПКИ</button>
         <label class="list-item" style="flex-direction:column;align-items:stretch;gap:8px"><span>Чувствительность обзора</span><input id="touch-sensitivity" type="range" min="0.002" max="0.012" step="0.001" value="0.005"></label>
         <p style="font-size:13px;color:#ccc">На телефоне: левый круг — движение, свайп справа — обзор, кнопки — стрельба, прыжок и перезарядка.</p>
         <button class="btn btn-small" onclick="document.getElementById('settings-modal').style.display='none'">ГОТОВО</button>
+    </div>
+    <div id="controls-editor" style="display:none;position:fixed;inset:0;z-index:249;background:rgba(0,0,0,.72);color:white;touch-action:none;">
+        <div style="position:absolute;top:14px;left:0;right:0;text-align:center;font-weight:bold;font-size:20px;pointer-events:none">РАСПОЛОЖИТЕ КНОПКИ</div>
+        <div style="position:absolute;top:52px;left:12px;right:12px;text-align:center;font-size:13px;color:#ddd;pointer-events:none">Перетаскивайте кнопки одним пальцем. Нажмите на кнопку, чтобы открыть ползунок размера. Нажмите «СОХРАНИТЬ», когда закончите.</div>
+        <button class="btn" id="save-controls-layout" style="position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:5">СОХРАНИТЬ</button>
     </div>
     <div id="mobile-controls">
         <div id="touch-look-area"></div>
@@ -709,6 +891,7 @@
         <button id="touch-fire" class="touch-btn">ОГОНЬ</button>
         <button id="touch-jump" class="touch-btn">↑</button>
         <button id="touch-reload" class="touch-btn">R</button>
+        <button id="touch-inspect" class="touch-btn" style="right:110px;bottom:250px">ОСМОТР</button>
         <button id="touch-weapons" class="touch-btn">ОРУЖИЕ</button>
         <button id="touch-emotions" class="touch-btn">ЭМОЦИИ</button>
         <button id="touch-pause" class="touch-btn">Ⅱ</button>
@@ -905,6 +1088,11 @@
         let enemyPoints = 0;
         let coins = parseInt(localStorage.getItem('cg_coins')) || 0;
         let ownedWeapons = JSON.parse(localStorage.getItem('cg_weapons')) || ['pistol'];
+        // Новые ножи доступны в инвентаре сразу.
+        ['butterfly_knife','m9_bayonet'].forEach(id => { if (!ownedWeapons.includes(id)) ownedWeapons.push(id); });
+        localStorage.setItem('cg_weapons', JSON.stringify(ownedWeapons));
+        let ownedWeaponSkins = []; localStorage.removeItem('cg_weapon_skins');
+        let equippedWeaponSkins = {}; localStorage.removeItem('cg_equipped_weapon_skins');
         let ownedHats = JSON.parse(localStorage.getItem('cg_hats')) || ['none'];
         let ownedGlasses = JSON.parse(localStorage.getItem('cg_glasses')) || ['none'];
         let ownedBeaks = JSON.parse(localStorage.getItem('cg_beaks')) || ['normal'];
@@ -1124,6 +1312,14 @@
             }, 1000);
         }
 
+        // Временная тестовая кнопка: добавляет 1000 монет на текущий локальный баланс.
+        window.testAddCoins = function() {
+            coins += 1000;
+            localStorage.setItem('cg_coins', coins);
+            updateHUD();
+            if (typeof marketNotice === 'function') marketNotice('Тест: начислено +1000 монет.');
+        };
+
         function updateHUD() {
             const m = Math.floor(gameTimeLeft / 60);
             const s = gameTimeLeft % 60;
@@ -1154,8 +1350,44 @@
             if (tab === 'weapons') window.switchWeaponTab('inventory');
         };
 
-        const weaponNames = { pistol:'Пистолет', gold_pistol:'Золотой пистолет', rifle:'Автомат', knife:'Нож', ak47:'AK-47', bazooka:'Гранатомёт' };
-        const weaponIcons = { pistol:'🔫', gold_pistol:'✨', rifle:'🔥', knife:'🔪', ak47:'🔫', bazooka:'🚀' };
+        const weaponNames = { pistol:'Пистолет', gold_pistol:'Золотой пистолет', rifle:'Автомат', knife:'Нож', butterfly_knife:'Нож-бабочка', m9_bayonet:'M9 Bayonet', ak47:'AK-47', bazooka:'Гранатомёт' };
+        const weaponIcons = { pistol:'🔫', gold_pistol:'✨', rifle:'🔥', knife:'🔪', butterfly_knife:'🦋', m9_bayonet:'🔪', ak47:'🔫', bazooka:'🚀' };
+        // Редкость и шансы выпадения из оружейного кейса (в сумме 100%).
+        const weaponRarity = {
+            pistol:     {name:'Обычное', color:'#b8bec7', chance:40},
+            rifle:      {name:'Необычное', color:'#55c878', chance:25},
+            knife:      {name:'Редкое', color:'#48a9ff', chance:15},
+            ak47:       {name:'Эпическое', color:'#b27aff', chance:10},
+            gold_pistol:{name:'Легендарное', color:'#ffb52e', chance:7},
+            bazooka:    {name:'Мифическое', color:'#ff5964', chance:3}
+        };
+        const rarityOf = id => weaponRarity[id] || {name:'Неизвестно',color:'#b8bec7',chance:0};
+        const rarityMarkup = id => { const r=rarityOf(id); return `<small style="display:block;color:${r.color};font-weight:800">${r.name}</small>`; };
+        // Небольшой рисунок самого оружия для карточек: форма остаётся узнаваемой,
+        // а окраска наносится на корпус, не заменяя оружие эмодзи.
+        function weaponPreviewMarkup(type, skinColor = null) {
+            const paint = skinColor || '#aeb8b0';
+            const glow = skinColor ? `filter:drop-shadow(0 0 5px ${paint})` : '';
+            let shape = '';
+            if (type === 'butterfly_knife') {
+                shape = `<path d="M47 30 L82 9 L94 13 L58 35 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M47 34 L15 13 L5 18 L39 42 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M43 34 L19 53 L28 59 L51 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><path d="M53 34 L78 53 L69 59 L45 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><circle cx="47" cy="36" r="4" fill="#c5ccd0"/>`;
+            } else if (type === 'm9_bayonet') {
+                shape = `<path d="M8 28 L76 19 L96 30 L76 40 L8 34 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M9 29 L30 29 L30 39 L9 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><path d="M29 29 L29 39" stroke="#c4cbc6" stroke-width="2"/>`;
+            } else if (type === 'knife') {
+                shape = `<path d="M13 35 L65 12 L84 15 L54 43 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M10 34 L23 25 L39 43 L26 51 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/>`;
+            } else if (type === 'rifle' || type === 'ak47') {
+                shape = `<path d="M10 23 L67 23 L77 28 L94 28 L94 35 L72 35 L68 40 L38 40 L34 34 L10 34 Z" fill="${paint}" stroke="#d9e0db" stroke-width="2"/><path d="M38 39 L48 39 L45 55 L34 55 Z" fill="#303835" stroke="#89938d" stroke-width="1.5"/><path d="M67 25 L88 25 L88 29 L67 29 Z" fill="#d4dbd6"/><path d="M12 26 L28 26 L28 31 L12 31 Z" fill="#e1e7e2"/>${type==='ak47'?'<path d="M8 33 L26 33 L32 45 L18 49 L8 39 Z" fill="#72533a" stroke="#b28b65" stroke-width="1.5"/>':''}`;
+            } else if (type === 'bazooka') {
+                shape = `<rect x="9" y="22" width="78" height="17" rx="7" fill="${paint}" stroke="#dce3dd" stroke-width="2"/><ellipse cx="88" cy="30.5" rx="6" ry="10" fill="#343b39" stroke="#aeb8b0" stroke-width="2"/><path d="M34 39 L47 39 L44 53 L32 53 Z" fill="#303835" stroke="#89938d" stroke-width="1.5"/><path d="M16 25 L75 25" stroke="#fff" stroke-opacity=".65" stroke-width="2"/>`;
+            } else {
+                shape = `<path d="M18 20 L67 20 L78 27 L78 36 L57 36 L51 48 L38 48 L38 35 L18 35 Z" fill="${paint}" stroke="#e0e6e1" stroke-width="2"/><path d="M38 36 L49 36 L46 54 L35 54 Z" fill="#303835" stroke="#89938d" stroke-width="1.5"/><path d="M23 23 L62 23" stroke="#fff" stroke-opacity=".65" stroke-width="2"/><path d="M70 27 L83 27 L83 32 L70 32 Z" fill="#aeb8b0"/>`;
+            }
+            return `<svg class="weapon-preview" viewBox="0 0 104 64" role="img" aria-label="${weaponNames[type] || 'Оружие'}" style="width:100px;height:62px;max-width:100%;${glow}">${shape}</svg>`;
+        }
+        const weaponSkinById = id => null;
+        const weaponSkinName = item => weaponNames[item.weapon] || item.weapon;
+        const weaponSkinColor = item => '#b8bec7';
+        const saveWeaponSkins = () => {};
         let marketItems = [];
         let marketListenerReady = false;
         let marketRef = null;
@@ -1192,7 +1424,7 @@
         window.closeItemAction = () => document.getElementById('item-action-modal').style.display = 'none';
         window.openCaseInfo = () => showItemActions({
             icon:'📦', title:'Оружейный кейс',
-            info:'Случайное оружие за 50 монет. Выпавший предмет сразу попадёт в инвентарь.',
+            info:'Случайное оружие за 50 монет. Шансы выпадения: Обычное — 40% (серый); Необычное — 25% (зелёный); Редкое — 15% (синий); Эпическое — 10% (фиолетовый); Легендарное — 7% (золотой); Мифическое — 3% (красный). Выпавший предмет сразу попадёт в инвентарь.',
             actions:[{label:'ОТКРЫТЬ · 50 🪙',run:()=>window.openWeaponCase()},{label:'ПОНЯТНО',run:()=>{}}]
         });
         function renderWeaponInventory() {
@@ -1200,17 +1432,18 @@
             if (!root) return;
             root.innerHTML = '';
             if (!ownedWeapons.length) {
-                root.innerHTML = '<div class="market-status">Инвентарь пуст. Открой кейс за 50 монет или купи оружие на рынке.</div>';
+                root.innerHTML = '<div class="market-status">Инвентарь пуст. Открой обычный оружейный кейс или купи оружие на рынке.</div>';
                 return;
             }
             ownedWeapons.forEach((id) => {
                 const card = document.createElement('div');
                 card.className = 'weapon-card';
                 const name = weaponNames[id] || id;
-                card.innerHTML = `<span style="font-size:42px">${weaponIcons[id] || '🔫'}</span><div class="weapon-name">${name}<small>${currentWeapon === id ? 'Экипировано' : 'В инвентаре'}</small></div><small style="color:#a7b58b">Нажми для действий</small>`;
+                card.style.borderColor = rarityOf(id).color;
+                card.innerHTML = `${weaponPreviewMarkup(id)}<div class="weapon-name">${name}${rarityMarkup(id)}<small>${currentWeapon === id ? 'Экипировано' : 'В инвентаре'}</small></div><small style="color:#a7b58b">Нажми для действий</small>`;
                 card.onclick = () => showItemActions({
                     icon:weaponIcons[id] || '🔫', title:name,
-                    info:currentWeapon === id ? 'Оружие уже экипировано.' : 'Предмет находится в твоём инвентаре.',
+                    info:`${rarityOf(id).name}. Обычное оружие в твоём инвентаре.`,
                     actions:[
                         {label:currentWeapon === id ? 'ВЫБРАНО' : 'ПРИМЕНИТЬ',run:()=>selectWeapon(id)},
                         {label:'ПРОДАТЬ',run:()=>listWeaponForSale(id)}
@@ -1219,18 +1452,7 @@
                 root.appendChild(card);
             });
         }
-        window.openWeaponCase = () => {
-            if (coins < 50) { marketNotice('Не хватает монет для открытия кейса.'); return; }
-            coins -= 50;
-            const pool = ['pistol','gold_pistol','rifle','knife','ak47','bazooka'];
-            const drop = pool[Math.floor(Math.random() * pool.length)];
-            ownedWeapons.push(drop);
-            localStorage.setItem('cg_coins', coins);
-            localStorage.setItem('cg_weapons', JSON.stringify(ownedWeapons));
-            updateShopUI(); renderWeaponInventory();
-            marketNotice(`Выпало: ${weaponNames[drop]}! Предмет добавлен в инвентарь.`);
-            if (typeof addChatMessage === 'function') addChatMessage(`Кейс открыт: ${weaponNames[drop]}!`, 'kill');
-        };
+        // Онлайн-рынок обычного оружия (без поддержки скинов).
         function connectWeaponMarket() {
             if (marketListenerReady) return;
             if (!database) { marketNotice('Демо-режим: онлайн-база не подключена.'); return; }
@@ -1238,13 +1460,27 @@
                 marketRef = database.ref('weaponMarket/listings');
                 walletRef = database.ref('weaponMarket/wallets/' + marketOwner);
                 marketRef.on('value', snap => {
-                    marketItems = Object.entries(snap.val() || {}).map(([key, item]) => ({...item, key}));
+                    marketItems = Object.entries(snap.val() || {})
+                        .filter(([, item]) => item && item.kind !== 'skin' && !item.skin && weaponNames[item.weapon])
+                        .map(([key, item]) => ({...item, key}));
                     renderWeaponMarket();
                     marketNotice('Онлайн-рынок подключён · объявления обновляются автоматически.');
                 }, () => marketNotice('Нет доступа к онлайн-рынку. Проверь правила Firebase Database.'));
+                let walletClaim = 0;
                 walletRef.on('value', snap => {
-                    const balance = Number(snap.val() || 0);
-                    if (balance > 0) { coins += balance; localStorage.setItem('cg_coins', coins); walletRef.set(0); updateShopUI(); }
+                    if (Number(snap.val() || 0) <= 0) return;
+                    walletRef.transaction(current => {
+                        const amount = Number(current || 0);
+                        if (amount <= 0) return;
+                        walletClaim = amount;
+                        return 0;
+                    }, (error, committed) => {
+                        if (error || !committed || walletClaim <= 0) return;
+                        coins += walletClaim; walletClaim = 0;
+                        localStorage.setItem('cg_coins', coins);
+                        updateShopUI();
+                        marketNotice('Оплата за проданный предмет зачислена на баланс.');
+                    });
                 });
                 marketListenerReady = true;
             } catch(e) { marketNotice('Онлайн-рынок недоступен: ' + e.message); }
@@ -1252,8 +1488,10 @@
         window.refreshWeaponMarket = () => {
             if (!database) { renderWeaponMarket(); marketNotice('Демо-режим: объявления доступны только в этой вкладке.'); return; }
             connectWeaponMarket();
-            marketRef && marketRef.once('value').then(snap => {
-                marketItems = Object.entries(snap.val() || {}).map(([key,item]) => ({...item,key}));
+            if (marketRef) marketRef.once('value').then(snap => {
+                marketItems = Object.entries(snap.val() || {})
+                    .filter(([, item]) => item && item.kind !== 'skin' && !item.skin && weaponNames[item.weapon])
+                    .map(([key, item]) => ({...item, key}));
                 renderWeaponMarket();
             }).catch(() => marketNotice('Не удалось обновить рынок. Проверь доступ Firebase.'));
         };
@@ -1261,19 +1499,26 @@
             const root = document.getElementById('weapon-market-list');
             if (!root) return;
             root.innerHTML = '';
-            if (!marketItems.length) { root.innerHTML = '<div class="market-status">Пока нет объявлений. Выставь предмет из инвентаря.</div>'; return; }
-            marketItems.slice().sort((a,b) => Number(a.price)-Number(b.price)).forEach(item => {
-                const card = document.createElement('div'); card.className = 'weapon-card';
-                const name = weaponNames[item.weapon] || item.weapon;
-                const owner = item.owner === marketOwner;
-                card.innerHTML = `<span style="font-size:42px">${weaponIcons[item.weapon] || '🔫'}</span><div class="weapon-name">${name}<small>${owner ? 'Твоё объявление' : 'Продавец: ' + String(item.nick || 'Игрок').replace(/[&<>"]/g,'')}</small></div><strong>${Number(item.price)} 🪙</strong><small style="color:#a7b58b">Нажми для информации</small>`;
-                card.onclick = () => showItemActions({
-                    icon:weaponIcons[item.weapon] || '🔫', title:name,
-                    info:`Продавец: ${item.nick || 'Игрок'} · Цена: ${Number(item.price)} монет`,
-                    actions: owner
-                        ? [{label:'ВЕРНУТЬ В ИНВЕНТАРЬ',run:()=>returnMarketWeapon(item)},{label:'ЗАКРЫТЬ',run:()=>{}}]
-                        : [{label:'КУПИТЬ',run:()=>buyMarketWeapon(item)},{label:'ЗАКРЫТЬ',run:()=>{}}]
-                });
+            const catalog = ['pistol','rifle','knife','ak47','gold_pistol','bazooka'];
+            catalog.forEach(id => {
+                const offers = marketItems.filter(item => item && item.weapon === id && item.kind !== 'skin' && !item.skin)
+                    .slice().sort((a,b) => Number(a.price)-Number(b.price));
+                const card = document.createElement('div');
+                card.className = 'weapon-card';
+                const name = weaponNames[id] || id;
+                const cheapest = offers.length ? `${Number(offers[0].price)} 🪙` : 'Нет предложений';
+                card.style.borderColor = rarityOf(id).color;
+                card.innerHTML = `<span style="font-size:42px">${weaponIcons[id] || '🔫'}</span><div class="weapon-name">${name}${rarityMarkup(id)}<small>${offers.length} предложений</small></div><strong>${cheapest}</strong><small style="color:#a7b58b">Нажми, чтобы посмотреть предложения</small>`;
+                card.onclick = () => {
+                    const actions = offers.map(offer => {
+                        const isOwner = offer.owner === marketOwner;
+                        const seller = String(offer.nick || 'Игрок').replace(/[&<>"']/g, '');
+                        return {label:`${isOwner ? 'ТВОЁ' : seller} · ${Number(offer.price)} 🪙${isOwner ? ' · СНЯТЬ' : ' · КУПИТЬ'}`,run:()=>isOwner ? returnMarketWeapon(offer) : buyMarketWeapon(offer)};
+                    });
+                    if (!actions.length) actions.push({label:'ПОКА НЕТ ПРЕДЛОЖЕНИЙ',run:()=>{}});
+                    actions.push({label:'ЗАКРЫТЬ',run:()=>{}});
+                    showItemActions({icon:weaponIcons[id] || '🔫',title:name,info:`${rarityOf(id).name} · ${offers.length} предложений на рынке.`,actions});
+                };
                 root.appendChild(card);
             });
         }
@@ -1351,10 +1596,16 @@
                 const listingRef = marketRef.child(item.key);
                 const result = await listingRef.transaction(current => current && current.owner !== marketOwner && Number(current.price) === Number(item.price) && coins >= Number(current.price) ? null : current);
                 if (!result.committed || result.snapshot.val()) { marketNotice('Предмет уже купили или объявление изменилось.'); return; }
-                coins -= Number(item.price); ownedWeapons.push(item.weapon);
-                localStorage.setItem('cg_coins',coins); localStorage.setItem('cg_weapons',JSON.stringify(ownedWeapons));
-                database.ref('weaponMarket/wallets/' + item.owner).transaction(v => Number(v || 0) + Number(item.price));
-                updateShopUI(); renderWeaponInventory(); renderWeaponMarket(); marketNotice('Покупка успешна! Оружие добавлено в инвентарь.');
+                const paidPrice = Number(item.price);
+                // Credit the seller's wallet before confirming the purchase locally.
+                // The wallet listener above safely transfers that balance to their coins.
+                await database.ref('weaponMarket/wallets/' + item.owner).transaction(v => Number(v || 0) + paidPrice);
+                coins -= paidPrice;
+                ownedWeapons.push(item.weapon);
+                localStorage.setItem('cg_coins',coins);
+                localStorage.setItem('cg_weapons',JSON.stringify(ownedWeapons));
+                updateShopUI(); renderWeaponInventory(); renderWeaponMarket();
+                marketNotice(`Покупка успешна! Оружие добавлено в инвентарь, продавцу начислено ${paidPrice} монет.`);
             } catch(e) { marketNotice('Ошибка покупки. Проверь правила Firebase Database.'); }
         }
 
@@ -1417,8 +1668,7 @@
             currentWeapon = id;
             localStorage.setItem('cg_current_weapon', id);
             setAmmoForWeapon(id);
-            playerWeapon.clear();
-            playerWeapon.add(createWeaponModel(id));
+            applyLocalWeaponState();
             
             // Обновляем превью
             if (shopChicken && shopChicken.userData.headGroup) {
@@ -1622,10 +1872,12 @@
         }
 
         function startReload() {
-            if (isReloading || ammo >= maxAmmo) return;
+            if (['knife','butterfly_knife','m9_bayonet'].includes(currentWeapon) || isReloading || ammo >= maxAmmo) return;
+            playerWeapon.userData.reloadStarted = performance.now();
+            playerWeapon.userData.reloadDuration = currentWeapon === 'bazooka' ? 2500 : 1500;
             isReloading = true;
             addChatMessage("Перезарядка...");
-            const reloadTime = (currentWeapon === 'bazooka') ? 2500 : 1500;
+            const reloadTime = playerWeapon.userData.reloadDuration;
             setTimeout(() => {
                 ammo = maxAmmo;
                 isReloading = false;
@@ -1834,10 +2086,31 @@
             }, 7000);
         }
 
-        function createWeaponModel(type = 'pistol') {
+        function createWeaponModel(type = 'pistol', skinId = null) {
             const gun = new THREE.Group();
+            skinId = null;
+            const skin = null;
             const col = type === 'gold_pistol' ? 0xffd700 : (type === 'rifle' || type === 'ak47' ? 0x222222 : 0x333333);
-            if (type === 'knife') {
+            if (type === 'butterfly_knife') {
+                const steel = new THREE.MeshPhongMaterial({color:0xcbd5dc, shininess:100, specular:0xffffff});
+                const dark = new THREE.MeshPhongMaterial({color:0x252b30});
+                const blade = new THREE.Mesh(new THREE.BoxGeometry(0.045,0.07,0.43), steel);
+                blade.position.set(0,0.035,-0.28); gun.add(blade);
+                const tip = new THREE.Mesh(new THREE.ConeGeometry(0.035,0.13,4), steel);
+                tip.rotation.x=-Math.PI/2; tip.position.set(0,0.035,-0.55); gun.add(tip);
+                gun.remove(blade);
+                const bladePivot = new THREE.Group(); bladePivot.position.set(0,0.035,-0.10); blade.position.z=-0.18; bladePivot.add(blade); tip.position.z=-0.45; bladePivot.add(tip); gun.add(bladePivot);
+                const handles = [];
+                [-1,1].forEach((side)=>{const pivot=new THREE.Group();pivot.position.set(side*0.055,0,-0.02);const h=new THREE.Mesh(new THREE.BoxGeometry(0.055,0.075,0.38),dark);h.position.z=0.12;pivot.add(h);pivot.rotation.x=side*0.12;pivot.userData.side=side;pivot.userData.restX=side*0.12;gun.add(pivot);handles.push(pivot);});
+                gun.userData.isButterfly = true;
+                gun.userData.butterflyHandles = handles;
+            } else if (type === 'm9_bayonet') {
+                const steel = new THREE.MeshPhongMaterial({color:0xd4d9dc, shininess:90});
+                const blade = new THREE.Mesh(new THREE.BoxGeometry(0.075,0.055,0.78),steel); blade.position.z=-0.34; gun.add(blade);
+                const tip = new THREE.Mesh(new THREE.ConeGeometry(0.052,0.18,4),steel); tip.rotation.x=-Math.PI/2; tip.position.z=-0.82; gun.add(tip);
+                const guard = new THREE.Mesh(new THREE.BoxGeometry(0.22,0.07,0.08),new THREE.MeshPhongMaterial({color:0x333333})); gun.add(guard);
+                const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.06,0.3,8),new THREE.MeshPhongMaterial({color:0x292d25})); grip.rotation.x=Math.PI/2; grip.position.z=0.2; gun.add(grip);
+            } else if (type === 'knife') {
                 const b = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, 0.6), new THREE.MeshPhongMaterial({color: 0xcccccc}));
                 const h = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.25), new THREE.MeshPhongMaterial({color: 0x442200}));
                 h.position.z = 0.4; gun.add(b); gun.add(h);
@@ -1878,6 +2151,24 @@
                 gun.add(body);
                 const handle = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.12), new THREE.MeshPhongMaterial({color: 0x111111}));
                 handle.position.set(0, -0.15, 0.1); gun.add(handle);
+            }
+            // Окрашиваем геометрию выбранным скином, не меняя тип оружия и его игровые характеристики.
+            if (skin) {
+                gun.traverse(part => {
+                    if (!part.isMesh || !part.material) return;
+                    part.material = part.material.clone();
+                    const originalHex = part.material.color ? part.material.color.getHex() : 0xffffff;
+                    // Ручки, магазины и тёмные детали остаются контрастными;
+                    // цвет скина покрывает корпус оружия, как окраска, а не перекрашивает всё целиком.
+                    if (originalHex > 0x292929 && originalHex !== 0x442200 && originalHex !== 0x5d4037) {
+                        part.material.color.set(skin.color);
+                        if ('emissive' in part.material) {
+                            part.material.emissive.set(skin.color);
+                            part.material.emissiveIntensity = 0.08;
+                        }
+                    }
+                });
+                gun.userData.skinId = skin.id;
             }
             return gun;
         }
@@ -2169,7 +2460,7 @@
             const leftWing = new THREE.Mesh(wingGeo, new THREE.MeshPhongMaterial({color: 0xeeeeee}));
             leftWing.position.set(-0.55, 0, 0); headGroup.add(leftWing);
             const rightWing = leftWing.clone(); rightWing.position.x = 0.55; headGroup.add(rightWing);
-            
+            chicken.userData.weaponHand = rightWing;
 
             // Убраны встроенные тактические аксессуары: шлем/экипировка не перекрывают купленные предметы.
 
@@ -2205,15 +2496,67 @@
         }
 
         const playerWeapon = new THREE.Group();
-        const weaponModel = createWeaponModel('pistol');
-        playerWeapon.add(weaponModel);
+        playerWeapon.add(createWeaponModel(currentWeapon, equippedWeaponSkins[currentWeapon] || null));
         // Рука в первом лице поменьше
         const playerHand = new THREE.Mesh(new RoundedBoxGeometry(0.15, 0.3, 0.6, 4, 0.05), new THREE.MeshPhongMaterial({color: 0xffffff}));
         playerHand.position.set(-0.12, -0.15, 0.1);
         playerWeapon.add(playerHand);
         scene.add(playerWeapon);
 
+        // Перестраиваем только модель оружия, сохраняя руку первого лица.
+        function setFirstPersonWeapon(type, skinId = null) {
+            playerWeapon.clear();
+            playerWeapon.add(createWeaponModel(type, skinId || equippedWeaponSkins[type] || null));
+            playerWeapon.add(playerHand);
+        }
+
+        // Одна и та же модель оружия используется в третьем лице и у сетевых игроков.
+        function setChickenWeapon(model, type, skinId = null) {
+            if (!model || !model.userData.headGroup) return;
+            type = type || 'pistol';
+            // Всегда берём именно крыло-руку персонажа, а не случайный объект головы.
+            const wing = model.userData.weaponHand;
+            if (!wing) return;
+            const oldGun = model.userData.weaponGroup;
+            if (oldGun) {
+                oldGun.parent?.remove(oldGun);
+                oldGun.traverse(part => {
+                    if (part.isMesh && part.material) {
+                        const mats = Array.isArray(part.material) ? part.material : [part.material];
+                        mats.forEach(mat => mat.dispose && mat.dispose());
+                    }
+                });
+            }
+            const gun = createWeaponModel(type, skinId);
+            gun.position.set(0.1, -0.2, 0.4);
+            gun.rotation.set(0, Math.PI, 0);
+            gun.userData.weaponType = type;
+            gun.userData.skinId = skinId || null;
+            wing.add(gun);
+            model.userData.weaponGroup = gun;
+            model.userData.currentWeapon = type;
+            model.userData.currentWeaponSkin = skinId || null;
+        }
+
+        function applyWeaponState(model, type, skinId, alive = true) {
+            if (!model) return;
+            type = type || 'pistol';
+            skinId = skinId || null;
+            if (model.userData.currentWeapon !== type || model.userData.currentWeaponSkin !== skinId || !model.userData.weaponGroup) {
+                setChickenWeapon(model, type, skinId);
+            }
+            if (model.userData.weaponGroup) model.userData.weaponGroup.visible = alive;
+        }
+
+        function applyLocalWeaponState() {
+            const skinId = equippedWeaponSkins[currentWeapon] || null;
+            setFirstPersonWeapon(currentWeapon, skinId);
+            applyWeaponState(playerModel, currentWeapon, skinId, health > 0);
+            if (database && currentRoomId && myPlayerId && isPlaying) syncNetwork();
+        }
+
         playerModel = createChickenModel(true);
+        setChickenWeapon(playerModel, currentWeapon, equippedWeaponSkins[currentWeapon] || null);
         playerModel.userData.camMode = 0;
         playerModel.visible = false;
         scene.add(playerModel);
@@ -2229,6 +2572,114 @@
         const mobileControls = document.getElementById('mobile-controls');
         const mobileToggle = document.getElementById('mobile-controls-toggle');
         const touchSensitivity = document.getElementById('touch-sensitivity');
+        const crosshairShape = document.getElementById('crosshair-shape');
+        const crosshairEl = document.getElementById('crosshair');
+        const savedCrosshair = localStorage.getItem('cg_crosshair_shape') || 'circle';
+        crosshairShape.value = savedCrosshair;
+        crosshairEl.classList.toggle('square', savedCrosshair === 'square');
+        crosshairShape.addEventListener('change', () => {
+            crosshairEl.classList.toggle('square', crosshairShape.value === 'square');
+            localStorage.setItem('cg_crosshair_shape', crosshairShape.value);
+        });
+        const controlsEditor = document.getElementById('controls-editor');
+        const editableTouchControls = ['touch-stick','touch-fire','touch-jump','touch-reload','touch-inspect','touch-weapons','touch-emotions','touch-pause'].map(id => document.getElementById(id));
+        const controlsLayoutKey = 'cg_mobile_controls_layout_v1';
+        function applyTouchControlLayout() {
+            let layout = {}; try { layout = JSON.parse(localStorage.getItem(controlsLayoutKey) || '{}') || {}; } catch (_) {}
+            editableTouchControls.forEach(el => {
+                const pos = layout[el.id];
+                if (pos && Number.isFinite(pos.left) && Number.isFinite(pos.top)) {
+                    el.style.left = pos.left + 'px'; el.style.top = pos.top + 'px';
+                    el.style.right = 'auto'; el.style.bottom = 'auto';
+                }
+                if (pos && Number.isFinite(pos.width) && Number.isFinite(pos.height)) {
+                    el.style.width = pos.width + 'px'; el.style.height = pos.height + 'px';
+                    if (Number.isFinite(pos.fontSize)) el.style.fontSize = pos.fontSize + 'px';
+                }
+            });
+        }
+        applyTouchControlLayout();
+        document.getElementById('customize-controls-btn').addEventListener('click', () => {
+            settingsModal.style.display = 'none'; controlsEditor.style.display = 'block';
+            mobileControls.classList.add('enabled');
+            document.getElementById('touch-look-area').style.pointerEvents = 'none';
+            editableTouchControls.forEach(el => { el.style.zIndex = '1002'; el.style.outline = '2px dashed #ffe34d'; el.style.touchAction = 'none'; });
+        });
+        let draggedControl = null, dragOffsetX = 0, dragOffsetY = 0;
+        const controlPointers = new Map();
+        let selectedSizeControl = null;
+        const sizePanel = document.createElement('div');
+        sizePanel.id = 'control-size-panel';
+        sizePanel.style.cssText = 'display:none;position:absolute;z-index:1100;background:#182219;border:2px solid #d6c83c;border-radius:12px;padding:10px 12px;width:190px;box-shadow:0 4px 16px #000a;touch-action:pan-y';
+        sizePanel.innerHTML = '<div style="font-weight:bold;font-size:13px;margin-bottom:6px">РАЗМЕР КНОПКИ <span id="control-size-value">100%</span></div><input id="control-size-slider" type="range" min="42" max="180" step="2" value="80" style="width:100%;accent-color:#e6d447">';
+        controlsEditor.appendChild(sizePanel);
+        const sizeSlider = sizePanel.querySelector('#control-size-slider');
+        function showControlSizePanel(el) {
+            selectedSizeControl = el;
+            const r = el.getBoundingClientRect();
+            const width = Math.max(42, Math.min(180, r.width));
+            sizeSlider.value = String(Math.round(width));
+            sizePanel.querySelector('#control-size-value').textContent = Math.round(width / 80 * 100) + '%';
+            sizePanel.style.display = 'block';
+            const panelW = 214, panelH = 76;
+            let left = r.right + 8;
+            if (left + panelW > innerWidth) left = Math.max(8, r.left - panelW - 8);
+            let top = Math.max(70, Math.min(innerHeight - panelH - 70, r.top));
+            sizePanel.style.left = left + 'px'; sizePanel.style.top = top + 'px';
+        }
+        sizeSlider.addEventListener('input', () => {
+            if (!selectedSizeControl) return;
+            const size = Number(sizeSlider.value);
+            selectedSizeControl.style.width = size + 'px';
+            selectedSizeControl.style.height = size + 'px';
+            const baseFont = Number(selectedSizeControl.dataset.baseFont || 16);
+            selectedSizeControl.style.fontSize = Math.max(10, Math.min(36, baseFont * size / 80)) + 'px';
+            sizePanel.querySelector('#control-size-value').textContent = Math.round(size / 80 * 100) + '%';
+        });
+        editableTouchControls.forEach(el => {
+            el.addEventListener('pointerdown', e => {
+                if (controlsEditor.style.display !== 'block') return;
+                e.preventDefault(); e.stopPropagation();
+                if (!controlPointers.has(el)) controlPointers.set(el, new Map());
+                const pts = controlPointers.get(el);
+                pts.set(e.pointerId, {x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,moved:false});
+                try { el.setPointerCapture(e.pointerId); } catch (_) {}
+                if (pts.size === 1) {
+                    draggedControl = el;
+                    const r = el.getBoundingClientRect(); dragOffsetX=e.clientX-r.left; dragOffsetY=e.clientY-r.top;
+                }
+            });
+            el.addEventListener('pointermove', e => {
+                const pts=controlPointers.get(el);
+                if (!pts || !pts.has(e.pointerId) || controlsEditor.style.display !== 'block') return;
+                e.preventDefault(); e.stopPropagation();
+                const old=pts.get(e.pointerId);
+                if (old && Math.hypot(e.clientX-old.startX,e.clientY-old.startY)>7) old.moved=true;
+                pts.set(e.pointerId,{...old,x:e.clientX,y:e.clientY});
+                if (pts.size === 1 && draggedControl === el) {
+                    const maxX=innerWidth-el.offsetWidth,maxY=innerHeight-el.offsetHeight;
+                    el.style.left=Math.max(0,Math.min(maxX,e.clientX-dragOffsetX))+'px';
+                    el.style.top=Math.max(0,Math.min(maxY,e.clientY-dragOffsetY))+'px';
+                    el.style.right='auto'; el.style.bottom='auto';
+                }
+            });
+            const endPointer=e=>{
+                const pts=controlPointers.get(el); if(!pts)return;
+                const ended=pts.get(e.pointerId);
+                if (ended && !ended.moved && controlsEditor.style.display === 'block') showControlSizePanel(el);
+                pts.delete(e.pointerId);
+                if(pts.size===1){const remaining=[...pts.values()][0];draggedControl=el;const r=el.getBoundingClientRect();dragOffsetX=remaining.x-r.left;dragOffsetY=remaining.y-r.top;}
+                else if(pts.size===0){controlPointers.delete(el);if(draggedControl===el)draggedControl=null;}
+            };
+            el.addEventListener('pointerup',endPointer); el.addEventListener('pointercancel',endPointer);
+        });
+        document.getElementById('save-controls-layout').addEventListener('click', () => {
+            const layout = {};
+            editableTouchControls.forEach(el => { const r=el.getBoundingClientRect(); layout[el.id]={left:Math.round(r.left),top:Math.round(r.top),width:Math.round(r.width),height:Math.round(r.height),fontSize:Math.round(parseFloat(getComputedStyle(el).fontSize)||16)}; el.style.outline=''; el.style.zIndex=''; });
+            localStorage.setItem(controlsLayoutKey, JSON.stringify(layout));
+            controlsEditor.style.display='none'; sizePanel.style.display='none'; selectedSizeControl=null; document.getElementById('touch-look-area').style.pointerEvents='auto';
+            syncMobileControls();
+        });
         let touchLookId = null, touchLookX = 0, touchLookY = 0, stickId = null, stickOrigin = null;
         let touchMoveX = 0, touchMoveY = 0;
         document.getElementById('settings-btn').addEventListener('click', () => settingsModal.style.display = 'flex');
@@ -2258,11 +2709,44 @@
         const lookEnd=e=>{if(e.pointerId===touchLookId)touchLookId=null;};
         document.addEventListener('pointerup',lookEnd);
         document.addEventListener('pointercancel',lookEnd);
-        document.getElementById('touch-fire').addEventListener('pointerdown',e=>{e.preventDefault(); if(!isPlaying)return; if(currentWeapon!=='knife' && (ammo<=0||isReloading))return; if(currentWeapon==='rifle') isShooting=true; else {const d=new THREE.Vector3();camera.getWorldDirection(d);shoot(camera.position,d);} });
+        document.getElementById('touch-fire').addEventListener('pointerdown',e=>{e.preventDefault(); if(!isPlaying)return; if(!['knife','butterfly_knife','m9_bayonet'].includes(currentWeapon) && (ammo<=0||isReloading))return; if(currentWeapon==='rifle') isShooting=true; else {const d=new THREE.Vector3();camera.getWorldDirection(d);shoot(camera.position,d);} });
         document.getElementById('touch-fire').addEventListener('pointerup',()=>isShooting=false);
         document.getElementById('touch-fire').addEventListener('pointercancel',()=>isShooting=false);
         document.getElementById('touch-jump').addEventListener('pointerdown',e=>{e.preventDefault(); if(canJump){velocity.y+=20;canJump=false;}});
         document.getElementById('touch-reload').addEventListener('pointerdown',e=>{e.preventDefault(); if(isPlaying && !isReloading && ammo<maxAmmo){startReload();}});
+        function inspectCurrentWeapon() {
+            if (!isPlaying || playerWeapon.userData.inspectUntil > performance.now()) return;
+            playerWeapon.userData.inspectStarted = performance.now();
+            playerHand.userData.baseY = playerHand.position.y;
+            playerWeapon.userData.inspectUntil = performance.now() + (currentWeapon === 'butterfly_knife' ? 1650 : 1200);
+            playerWeapon.userData.inspectType = currentWeapon;
+            playerWeapon.userData.inspectVariant = currentWeapon === 'butterfly_knife' ? (Math.random() < 0.5 ? 'flip' : 'toss') : 'flip';
+            // Во второй анимации отделяем только модель ножа от руки.
+            if (playerWeapon.userData.inspectVariant === 'toss') {
+                const knifeModel = playerWeapon.children.find(ch => ch !== playerHand && ch.userData && ch.userData.isButterfly);
+                if (knifeModel) {
+                    knifeModel.updateMatrixWorld(true);
+                    playerWeapon.userData.tossModel = knifeModel;
+                    playerWeapon.userData.tossLocal = {
+                        position: knifeModel.position.clone(),
+                        quaternion: knifeModel.quaternion.clone(),
+                        scale: knifeModel.scale.clone()
+                    };
+                    scene.attach(knifeModel);
+                    playerWeapon.userData.tossStartPosition = knifeModel.position.clone();
+                    playerWeapon.userData.tossStartQuaternion = knifeModel.quaternion.clone();
+                    // Запоминаем положение относительно камеры: подброшенный нож
+                    // остаётся рядом с игроком даже во время ходьбы и поворотов.
+                    camera.updateMatrixWorld(true);
+                    playerWeapon.userData.tossCameraOffset = camera.worldToLocal(knifeModel.position.clone());
+                }
+            }
+            playerWeapon.userData.networkAction = 'inspect';
+            playerWeapon.userData.networkActionAt = Date.now();
+        }
+        document.getElementById('touch-inspect').addEventListener('pointerdown',e=>{e.preventDefault();inspectCurrentWeapon();});
+
+        document.addEventListener('keydown', e => { if (e.code === 'KeyV' && !e.repeat) inspectCurrentWeapon(); });
         document.getElementById('touch-weapons').addEventListener('click', e => { e.preventDefault(); if (isPlaying) document.dispatchEvent(new KeyboardEvent('keydown', {code:'KeyE'})); });
         document.getElementById('touch-emotions').addEventListener('click', e => { e.preventDefault(); if (isPlaying) document.dispatchEvent(new KeyboardEvent('keydown', {code:'KeyF'})); });
         document.getElementById('touch-pause').addEventListener('click', e => {
@@ -2344,7 +2828,9 @@
         continueBtn.addEventListener('click', () => {
             health = 100; 
             hpFill.style.width = '100%';
-            if (database) database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({ hp: 100, lastHitBy: "" });
+            if (database) database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({ hp: 100, alive: true, weapon: currentWeapon, weaponSkin: equippedWeaponSkins[currentWeapon] || null, lastHitBy: "" });
+            applyWeaponState(playerModel, currentWeapon, equippedWeaponSkins[currentWeapon] || null, true);
+            playerWeapon.visible = cameraMode === 0;
             deathScreen.style.display = 'none';
             controls.lock();
         });
@@ -2379,13 +2865,17 @@
                         if (w === 'pistol') label = '🔫 ПИСТОЛЕТ';
                         if (w === 'gold_pistol') label = '✨ ЗОЛОТОЙ ПИСТОЛЕТ';
                         if (w === 'knife') label = '🔪 НОЖ';
+                        if (w === 'butterfly_knife') label = '🦋 БАБОЧКА';
+                        if (w === 'm9_bayonet') label = '🔪 M9 BAYONET';
                         if (w === 'bazooka') label = '🚀 ГРАНАТОМЁТ';
+                        if (w === 'ak47') label = '🔫 AK-47';
+                        if (w === 'rifle') label = '🔥 АВТОМАТ';
                         div.innerText = label;
                         div.onclick = () => {
                             currentWeapon = w;
+                            localStorage.setItem('cg_current_weapon', w);
                             setAmmoForWeapon(w);
-                            playerWeapon.clear();
-                            playerWeapon.add(createWeaponModel(w));
+                            applyLocalWeaponState();
                             weaponMenu.style.display = 'none';
                             // On touch devices, keep the swipe-look controls active without requesting Pointer Lock.
                             const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -2640,6 +3130,9 @@
                         controls.unlock();
                         killerNameDisplay.innerText = killer;
                         deathScreen.style.display = 'flex';
+                        if (playerModel?.userData.weaponGroup) playerModel.userData.weaponGroup.visible = false;
+                        if (playerWeapon) playerWeapon.visible = false;
+                        if (database && currentRoomId) database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({ alive: false });
                         addChatMessage(`${killer} ➔ ${nickInput.value}`, 'kill');
                         database.ref(`rooms/${currentRoomId}/enemyScore`).transaction(s => (s || 0) + 1);
                     }
@@ -2798,6 +3291,10 @@
                 ry: angle,
                 rx: -pitch,
                 weapon: currentWeapon,
+                action: playerWeapon && playerWeapon.userData.networkActionAt && Date.now() - playerWeapon.userData.networkActionAt < 2200 ? playerWeapon.userData.networkAction : null,
+                actionAt: playerWeapon && playerWeapon.userData.networkActionAt || 0,
+                weaponSkin: equippedWeaponSkins[currentWeapon] || null,
+                alive: health > 0,
                 hat: currentHat,
                 glass: currentGlass,
                 beak: currentBeak,
@@ -2814,10 +3311,11 @@
         function resetPlayerHP() {
             health = 100;
             hpFill.style.width = '100%';
+            applyWeaponState(playerModel, currentWeapon, equippedWeaponSkins[currentWeapon] || null, true);
             if (database) {
-                database.ref(`rooms/${currentRoomId}/players/${myPlayerId}/hp`).set({
-                    val: 100,
-                    by: ""
+                database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({
+                    hp: { val: 100, by: "" }, alive: true,
+                    weapon: currentWeapon, weaponSkin: equippedWeaponSkins[currentWeapon] || null
                 });
             }
         }
@@ -2833,6 +3331,11 @@
                 if (showMsg) addChatMessage(`${model.userData.name} зашел на сервер`, 'normal');
             }
             const p = remotePlayers[id];
+            if (data.actionAt && data.actionAt !== p.userData.lastActionAt) {
+                p.userData.lastActionAt = data.actionAt;
+                p.userData.remoteAction = data.action || null;
+                p.userData.remoteActionStarted = performance.now();
+            }
             p.position.set(data.x, data.y - 1.2, data.z);
             p.rotation.y = data.ry || 0; 
             if (p.userData.headGroup) p.userData.headGroup.rotation.x = data.rx || 0;
@@ -2845,18 +3348,32 @@
                 if (p.userData.hpRed) p.userData.hpRed.scale.x = Math.max(0, hpVal / 100);
             }
 
-            if (data.weapon && p.userData.currentWeapon !== data.weapon) {
-                p.userData.currentWeapon = data.weapon;
-                const wing = p.userData.headGroup.children.find(c => c.position.x > 0.5); 
-                if (wing) {
-                    wing.clear();
-                    const newGun = createWeaponModel(data.weapon);
-                    newGun.position.set(0.1, -0.2, 0.4);
-                    newGun.rotation.y = Math.PI;
-                    wing.add(newGun);
+            // Оружие и скин берём только из сетевых данных конкретного игрока.
+            // Локальный инвентарь/скины этого клиента никогда не влияют на чужую модель.
+            const remoteWeapon = typeof data.weapon === 'string' ? data.weapon : 'pistol';
+            const remoteSkin = typeof data.weaponSkin === 'string' ? data.weaponSkin : null;
+            const remoteHp = data.hp !== undefined ? (typeof data.hp === 'object' ? data.hp.val : data.hp) : 100;
+            applyWeaponState(p, remoteWeapon, remoteSkin, data.alive !== false && Number(remoteHp) > 0);
+            if (p.userData.weaponGroup && p.userData.remoteActionStarted) {
+                const elapsed = performance.now() - p.userData.remoteActionStarted;
+                const duration = p.userData.remoteAction === 'inspect' ? 1450 : 260;
+                const wave = Math.sin(Math.min(1, elapsed / duration) * Math.PI);
+                p.userData.weaponGroup.rotation.x = p.userData.remoteAction === 'shoot' ? -wave * 0.55 : wave * 0.9;
+                p.userData.weaponGroup.rotation.z = p.userData.remoteAction === 'inspect' ? wave * 0.7 : 0;
+                const remoteHandles = p.userData.weaponGroup.userData.butterflyHandles || [];
+                remoteHandles.forEach((handle, index) => {
+                    const phase = Math.min(1, elapsed / duration) * Math.PI * 8 + index * Math.PI;
+                    handle.rotation.x = p.userData.remoteAction === 'inspect'
+                        ? (index === 0 ? -1 : 1) * (0.18 + Math.abs(Math.sin(phase)) * 2.35)
+                        : (index === 0 ? -1 : 1) * (0.12 + wave * 1.8);
+                });
+                if (elapsed >= duration) {
+                    remoteHandles.forEach((handle, index) => { handle.rotation.x = index === 0 ? -0.08 : 0.08; handle.rotation.y = 0; handle.rotation.z = 0; });
+                    p.userData.weaponGroup.rotation.set(0, 0, 0);
+                    p.userData.remoteActionStarted = 0;
                 }
             }
-            
+
             // Всегда обновляем визуал с учетом пришедших трансформаций
             if (data.hat !== undefined) { p.userData.currentHat = data.hat; updateHatMesh(p, data.hat, tr.hat); }
             if (data.glass !== undefined) { p.userData.currentGlass = data.glass; updateGlassMesh(p, data.glass, tr.glass); }
@@ -2895,8 +3412,11 @@
         function meleeAttack() {
             // Анимация удара
             if (playerWeapon) {
-                playerWeapon.position.z -= 0.5;
-                setTimeout(() => { if (playerWeapon) playerWeapon.position.z += 0.5; }, 100);
+                const now = performance.now();
+                playerWeapon.userData.slashStarted = now;
+                playerWeapon.userData.slashUntil = now + 420;
+                playerWeapon.userData.slashType = currentWeapon;
+                playerWeapon.userData.inspectQueued = true;
             }
 
             const meleeRange = 3.5;
@@ -2908,7 +3428,7 @@
                         database.ref(`rooms/${currentRoomId}/players/${id}/hp`).transaction((current) => {
                             let oldVal = (typeof current === 'object') ? (current.val ?? 100) : (current ?? 100);
                             if (oldVal <= 0) return;
-                            return { val: Math.max(0, oldVal - 35), by: nickInput.value || 'Player' };
+                            return { val: Math.max(0, oldVal - 1000), by: nickInput.value || 'Player' };
                         });
                     }
                 }
@@ -2917,7 +3437,7 @@
 
         function shoot(fromPos, targetDir, isEnemy = false, shooterName = "") {
             if (!isEnemy) {
-                if (currentWeapon === 'knife') {
+                if (['knife','butterfly_knife','m9_bayonet'].includes(currentWeapon)) {
                     meleeAttack();
                     return;
                 }
@@ -2926,6 +3446,7 @@
                     return;
                 }
                 ammo--;
+                if (playerWeapon) { playerWeapon.userData.shootStarted = performance.now(); playerWeapon.userData.shootUntil = playerWeapon.userData.shootStarted + 170; playerWeapon.userData.networkAction = 'shoot'; playerWeapon.userData.networkActionAt = Date.now(); }
                 document.getElementById('ammo-hud').innerText = `${ammo} / ∞`;
                 if (ammo <= 0) startReload();
             }
@@ -2960,7 +3481,7 @@
                 const wing = shopChicken.userData.headGroup.children.find(c => c.position.x > 0.5);
                 if (wing) {
                     wing.clear();
-                    const gun = createWeaponModel(currentWeapon);
+                    const gun = createWeaponModel(currentWeapon, equippedWeaponSkins[currentWeapon] || null);
                     gun.position.set(0.1, -0.2, 0.4);
                     wing.add(gun);
                 }
@@ -3034,7 +3555,7 @@ shopChicken.userData.rightLeg.rotation.x = 0;
             const wing = shopChicken.userData.headGroup.children.find(c => c.position.x > 0.5);
             if (wing) {
                 wing.clear();
-                const gun = createWeaponModel(currentWeapon);
+                const gun = createWeaponModel(currentWeapon, equippedWeaponSkins[currentWeapon] || null);
                 gun.position.set(0.1, -0.2, 0.4);
                 gun.rotation.y = Math.PI; // Разворачиваем вперед
                 wing.add(gun);
@@ -3151,6 +3672,133 @@ shopChicken.userData.rightLeg.rotation.x = 0;
                 playerWeapon.position.copy(camera.position);
                 playerWeapon.rotation.copy(camera.rotation);
                 playerWeapon.translateZ(-0.5); playerWeapon.translateX(0.6); playerWeapon.translateY(-0.32);
+                // Небольшие процедурные анимации от первого лица.
+                const weaponNow = performance.now();
+                if (playerWeapon.userData.slashUntil > weaponNow) {
+                    const sp = (weaponNow-playerWeapon.userData.slashStarted)/(playerWeapon.userData.slashUntil-playerWeapon.userData.slashStarted);
+                    const slash = Math.sin(sp*Math.PI);
+                    playerWeapon.position.z -= slash*0.48;
+                    playerWeapon.rotation.x -= slash*0.85;
+                    playerWeapon.rotation.y += slash*0.22;
+                    playerHand.rotation.x = -slash*0.9;
+                    if (playerWeapon.userData.butterflyHandles) {
+                        playerWeapon.userData.butterflyHandles.forEach((handle,index) => {
+                            const side = handle.userData.side || (index ? 1 : -1);
+                            // Во время удара рукоятки резко расходятся, затем возвращаются.
+                            const swing = Math.sin(sp * Math.PI);
+                            handle.rotation.set((handle.userData.restX||0) + side * swing * 2.35, side * swing * 0.32, side * swing * 0.18);
+                        });
+                        playerWeapon.rotation.z += slash * 0.28;
+                    }
+                } else if (playerWeapon.userData.slashUntil && weaponNow >= playerWeapon.userData.slashUntil) {
+                    playerWeapon.userData.slashUntil = 0;
+                    playerHand.rotation.x = 0;
+                    if (playerWeapon.userData.inspectQueued) {
+                        playerWeapon.userData.inspectQueued = false;
+                        inspectCurrentWeapon();
+                    }
+                }
+                if (playerWeapon.userData.shootUntil > weaponNow) {
+                    const fp = (weaponNow-playerWeapon.userData.shootStarted)/(playerWeapon.userData.shootUntil-playerWeapon.userData.shootStarted);
+                    const kick = Math.sin(fp*Math.PI);
+                    playerWeapon.position.z += kick*0.12;
+                    playerWeapon.rotation.x -= kick*0.12;
+                }
+                if (playerWeapon.userData.reloadStarted) {
+                    const rp = Math.min(1, (weaponNow-playerWeapon.userData.reloadStarted)/(playerWeapon.userData.reloadDuration||1500));
+                    const wave = Math.sin(rp*Math.PI);
+                    playerWeapon.position.y -= wave*0.13;
+                    playerWeapon.rotation.x += wave*0.22;
+                    playerHand.rotation.x = wave*0.75;
+                    if (rp >= 1) { playerWeapon.userData.reloadStarted = 0; playerHand.rotation.x = 0; }
+                } else playerHand.rotation.x = 0;
+                if (playerWeapon.userData.inspectUntil > weaponNow) {
+                    const ip = (weaponNow-playerWeapon.userData.inspectStarted)/(playerWeapon.userData.inspectUntil-playerWeapon.userData.inspectStarted);
+                    const wave = Math.sin(ip*Math.PI);
+                    if (playerWeapon.userData.inspectVariant !== 'toss') {
+                        playerWeapon.position.y += wave*0.18;
+                        playerWeapon.rotation.z += wave*0.32;
+                        playerWeapon.rotation.x += wave*0.18;
+                    }
+                    if (playerWeapon.userData.inspectType === 'butterfly_knife') {
+                        const smooth = t => { t=Math.max(0,Math.min(1,t)); return t*t*(3-2*t); };
+                        const right = (playerWeapon.userData.butterflyHandles||[]).find(h => h.userData.side === 1);
+                        const left = (playerWeapon.userData.butterflyHandles||[]).find(h => h.userData.side === -1);
+                        if (playerWeapon.userData.inspectVariant === 'toss') {
+                            // Подброс: нож покидает ладонь, делает полный оборот и возвращается в хват.
+                            const flight = Math.max(0, Math.min(1, (ip-0.12)/0.72));
+                            const arc = Math.sin(flight*Math.PI);
+                            const tossModel = playerWeapon.userData.tossModel;
+                            const startPos = playerWeapon.userData.tossStartPosition;
+                            const startQuat = playerWeapon.userData.tossStartQuaternion;
+                            const cameraOffset = playerWeapon.userData.tossCameraOffset;
+                            // Базовая точка следует за камерой: нож не остаётся позади,
+                            // если игрок идёт или поворачивается во время подброса.
+                            if (tossModel && startPos && startQuat) {
+                                camera.updateMatrixWorld(true);
+                                const camRight = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion).normalize();
+                                const camUp = new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion).normalize();
+                                const followPos = cameraOffset ? camera.localToWorld(cameraOffset.clone()) : startPos.clone();
+                                tossModel.position.copy(followPos)
+                                    .addScaledVector(camRight, 0.52*arc)
+                                    .addScaledVector(camUp, 0.95*arc);
+                                tossModel.quaternion.copy(startQuat)
+                                    .multiply(new THREE.Quaternion().setFromAxisAngle(camRight, flight*Math.PI*2));
+                                tossModel.rotateZ(Math.sin(flight*Math.PI)*0.42);
+                            }
+                            // Рукоятки бабочки независимо раскрываются и складываются в полёте.
+                            if (right) right.rotation.set((right.userData.restX||0)+Math.sin(flight*Math.PI*2)*3.0+arc*1.15, 0.18*arc, 0.12*arc);
+                            if (left) left.rotation.set((left.userData.restX||0)-Math.sin(flight*Math.PI*2+0.8)*2.8-arc*0.9, -0.16*arc, -0.10*arc);
+                            // Кисть слегка готовится поймать нож: поднимается и
+                            // разворачивается к нему, затем возвращается в исходный хват.
+                            const catchPrep = Math.sin(flight*Math.PI);
+                            playerHand.rotation.set(-0.16*catchPrep, 0.08*catchPrep, -0.22*catchPrep);
+                            playerHand.position.y = playerHand.userData.baseY + 0.055*catchPrep;
+                        } else {
+                            // Профессиональный флип: рукоятки последовательно складываются и раскрываются.
+                            const fold = smooth(ip/0.22)*2.95;
+                            const release = smooth((ip-0.57)/0.25)*2.85;
+                            if (right) right.rotation.set(0.12 + fold - release, 0.10 + Math.sin(ip*Math.PI)*0.22, 0.06);
+                            if (left) {
+                                const counter = Math.sin(Math.max(0,Math.min(1,(ip-0.16)/0.62))*Math.PI);
+                                left.rotation.set(-0.10-counter*1.55, -0.12-counter*0.30, -0.08);
+                            }
+                            const rollPhase = smooth((ip-0.20)/0.46);
+                            const fullTurn = rollPhase * Math.PI * 2;
+                            playerHand.rotation.z = fullTurn;
+                            playerHand.rotation.x = Math.sin(rollPhase*Math.PI)*0.34;
+                            playerWeapon.rotation.z += fullTurn;
+                            playerWeapon.rotation.y += Math.sin(rollPhase*Math.PI)*0.82;
+                            playerWeapon.rotation.x += Math.sin(rollPhase*Math.PI)*0.46;
+                            playerWeapon.position.y += Math.sin(rollPhase*Math.PI)*0.13;
+                        }
+                    } else if (['knife','m9_bayonet'].includes(playerWeapon.userData.inspectType)) {
+                        playerWeapon.rotation.y += Math.sin(ip*Math.PI*2)*0.55;
+                    } else {
+                        playerWeapon.rotation.y += Math.sin(ip*Math.PI*2)*0.28;
+                    }
+                } else {
+                    // Возвращаем отделённую модель в хват после завершения подброса.
+                    const tossed = playerWeapon.userData.tossModel;
+                    const local = playerWeapon.userData.tossLocal;
+                    if (tossed && local) {
+                        playerWeapon.attach(tossed);
+                        tossed.position.copy(local.position);
+                        tossed.quaternion.copy(local.quaternion);
+                        tossed.scale.copy(local.scale);
+                        delete playerWeapon.userData.tossModel;
+                        delete playerWeapon.userData.tossLocal;
+                        delete playerWeapon.userData.tossStartPosition;
+                        delete playerWeapon.userData.tossStartQuaternion;
+                    }
+                    playerHand.rotation.set(0,0,0);
+                    if (playerHand.userData.baseY !== undefined) playerHand.position.y = playerHand.userData.baseY;
+                    if (playerWeapon.userData.butterflyHandles) {
+                    playerWeapon.userData.butterflyHandles.forEach(handle => {
+                        handle.rotation.set(handle.userData.restX||0, 0, 0);
+                    });
+                    }
+                }
 
                 if (grabbedObj) {
                     const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
@@ -3447,8 +4095,8 @@ shopChicken.userData.rightLeg.rotation.x = 0;
 
         animate();
         // Инициализация визуальных скинов
-        playerWeapon.clear();
-        playerWeapon.add(createWeaponModel(currentWeapon));
+        setFirstPersonWeapon(currentWeapon, equippedWeaponSkins[currentWeapon] || null);
+        setChickenWeapon(playerModel, currentWeapon, equippedWeaponSkins[currentWeapon] || null);
         setAmmoForWeapon(currentWeapon);
         [menuChicken, playerModel].forEach(m => {
             updateHatMesh(m, currentHat);
