@@ -294,7 +294,70 @@
             display: none;
             border-radius: 5px;
         }
-    </style>
+
+        /* Tactical shooter visual theme */
+        :root { color-scheme: dark; }
+        body { background: #111713; }
+        #menu { background: radial-gradient(ellipse at 50% 42%, rgba(74,91,61,.35), rgba(8,12,10,.94) 72%); }
+        #profile { border-color: #87966b; background: rgba(15,22,17,.82); }
+        #nickname-input { border-bottom-color: #a7b58b; color: #dbe4c8; }
+        .btn { background: #687a50; color: #f1f3e9; border-radius: 4px; box-shadow: 0 4px 0 #39452d; }
+        .btn:hover { background: #829466; color: white; }
+        .modal, #weapon-menu { border-color: #87966b; border-radius: 6px; background: rgba(15,20,17,.97); }
+        .modal h2 { color: #c4d2a8; }
+        .modal-close { color: #c4d2a8; }
+        .tab-btn.active, .shop-tab.active { border-color: #a7b58b; color: #e1e9d3; background: #526344; }
+        #shop-preview { border-color: #87966b; }
+        #crosshair { border-radius: 1px; border-color: #e4ead8; }
+        #hp-bar { border-color: #a7b58b; }
+        #hp-fill { background: #9aa96f; }
+
+
+        #settings-modal { max-width: 440px; }
+        #mobile-controls { position: fixed; inset: 0; z-index: 250; display: none; pointer-events: none; touch-action: none; }
+        #mobile-controls.enabled { display: block; }
+        .touch-stick { position: absolute; left: 24px; bottom: 28px; width: 132px; height: 132px; border: 2px solid rgba(255,255,255,.55); border-radius: 50%; background: rgba(20,30,15,.35); pointer-events: auto; }
+        .touch-stick:after { content: ''; position: absolute; width: 48px; height: 48px; left: 40px; top: 40px; border-radius: 50%; background: rgba(220,235,190,.65); border: 1px solid #fff; }
+        .touch-btn { position: absolute; pointer-events: auto; border: 2px solid rgba(255,255,255,.7); color: white; background: rgba(35,48,25,.7); border-radius: 50%; font-weight: bold; font-size: 11px; line-height: 1.05; padding: 3px; width: 58px; height: 58px; touch-action: none; }
+        #touch-fire { right: 24px; bottom: 70px; width: 78px; height: 78px; background: rgba(130,35,20,.75); }
+        #touch-jump { right: 110px; bottom: 24px; }
+        #touch-reload { right: 24px; bottom: 164px; }
+        #touch-weapons { right: 104px; bottom: 180px; }
+        #touch-emotions { right: 104px; bottom: 110px; }
+        #touch-pause { right: 24px; top: 18px; width: 44px; height: 44px; border-radius: 12px; font-size: 10px; background: rgba(15,20,17,.72); }
+        #touch-look-area { position: absolute; right: 0; top: 0; width: 58%; height: 100%; pointer-events: auto; touch-action: none; }
+        @media (max-width: 700px) { .modal { width: 88%; max-height: 80vh; overflow-y: auto; } #profile { top: 12px; left: 10px; padding: 8px; } }
+        /* Карточный интерфейс магазина, инвентаря и рынка */
+        .weapon-subtabs { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 14px; }
+        .weapon-subtab { flex:1; min-width:90px; padding:10px 12px; background:#202820; color:#dce5d3; border:1px solid #53604a; border-radius:7px; cursor:pointer; font-weight:700; }
+        .weapon-subtab.active { background:#526344; border-color:#a7b58b; color:#fff; }
+        #weapon-inventory-list,#weapon-market-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(125px,1fr)); gap:10px; }
+        .weapon-card { min-width:0; min-height:142px; padding:13px 10px; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:8px; text-align:center; background:linear-gradient(145deg,rgba(68,82,59,.42),rgba(18,24,19,.95)); border:1px solid #53604a; border-radius:9px; cursor:pointer; transition:transform .15s,border-color .15s,background .15s; }
+        .weapon-card:hover { transform:translateY(-2px); border-color:#a7b58b; background:linear-gradient(145deg,rgba(93,112,75,.55),rgba(18,24,19,.98)); }
+        .weapon-card .weapon-name { font-weight:700; color:#edf2e8; font-size:13px; }
+        .weapon-card .weapon-name small { display:block; margin-top:4px; color:#aeb9a5; font-size:11px; font-weight:400; }
+        .weapon-card .btn,.weapon-card .tab-btn { width:100%; box-sizing:border-box; margin:0; padding:8px 6px; font-size:11px; border-radius:5px; }
+        .case-card { display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:18px; background:linear-gradient(145deg,#35422f,#151b16); border:1px solid #87966b; border-radius:10px; cursor:pointer; }
+        .case-card:hover { border-color:#d5e2bd; background:linear-gradient(145deg,#46583d,#151b16); }
+        .shop-container:not(#shop-weapons) .list-item { box-sizing:border-box; min-height:110px; justify-content:center; text-align:center; background:linear-gradient(145deg,rgba(68,82,59,.42),rgba(18,24,19,.95)); border:1px solid #53604a; border-radius:9px; }
+        .shop-container:not(#shop-weapons) .list-item span { font-weight:700; }
+        .shop-container:not(#shop-weapons) .list-item .btn { width:100%; }
+        .item-action-modal { width:min(340px,88vw); text-align:center; }
+        .item-action-modal .action-icon { font-size:58px; padding:12px; }
+        .item-action-modal .action-buttons { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+        .item-action-modal .action-buttons button { width:100%; padding:11px 5px; font-size:13px; }
+        .market-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+        @media(max-width:700px) { .shop-layout{display:block;} .shop-preview-side{display:none;} .weapon-card{min-height:130px;} .weapon-subtab{font-size:12px;} }
+
+    
+        /* Убрана затемняющая маска и зелёная подсветка главного меню */
+        #menu { background: transparent; }
+        #menu h1 { color: #ffde00 !important; }
+        #menu #profile { border-color: #ffde00; background: rgba(0,0,0,.4); }
+        #menu #nickname-input { border-bottom-color: #ffde00; color: #ffde00; }
+        #menu .btn { background: #ffde00; color: #111; box-shadow: 0 4px 0 #b39b00; }
+        #menu .btn:hover { background: #fff; color: #111; }
+</style>
 </head>
 <body oncontextmenu="return false;">
     <div id="err-box" style="display: none; position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(139,0,0,0.9); color: white; padding: 10px 20px; border-radius: 8px; z-index: 9999; font-family: Arial; max-width: 90%;"></div>
@@ -303,9 +366,10 @@
             <input type="text" id="nickname-input" placeholder="Ник..." maxlength="12">
             <div id="level-display" style="margin-top: 5px; font-size: 14px; opacity: 0.9;">Уровень: 1</div>
         </div>
-        <h1 style="color: #ffde00; text-shadow: 4px 4px 0 #000; font-size: 60px; margin-top: 50px;">CHICKEN GUN</h1>
+        <h1 style="color: #d4e0b0; text-shadow: 4px 4px 0 #000; font-size: 60px; margin-top: 50px;">CHICKEN OPS</h1>
         <div style="margin-top: 120px; display: flex; flex-direction: column; align-items: center;">
             <button class="btn" id="play-btn">ИГРАТЬ</button>
+            <button class="btn btn-small" id="settings-btn">⚙ НАСТРОЙКИ</button>
             <div style="margin-top: 20px; display: flex;">
                 <button class="btn btn-small" id="servers-btn">СЕРВЕРА</button>
                 <button class="btn btn-small" id="shop-btn">МАГАЗИН</button>
@@ -357,7 +421,30 @@
                     <div class="shop-tab" id="tab-backpacks" onclick="switchShopTab('backpacks')">Рюкзаки</div>
                 </div>
                 
-                <div id="shop-weapons" class="shop-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: 280px; overflow-y: auto; padding: 5px;">
+                <div id="shop-weapons" class="shop-container" style="display: block; max-height: 390px; overflow-y: auto; padding: 5px;">
+                    <div class="weapon-subtabs">
+                        <button class="weapon-subtab active" id="weapon-tab-inventory-btn" onclick="switchWeaponTab('inventory')">Инвентарь</button>
+                        <button class="weapon-subtab" id="weapon-tab-cases-btn" onclick="switchWeaponTab('cases')">Магазин</button>
+                        <button class="weapon-subtab" id="weapon-tab-market-btn" onclick="switchWeaponTab('market')">Рынок · онлайн</button>
+                    </div>
+                    <div id="weapon-tab-inventory" class="weapon-subpage">
+                        <div id="weapon-inventory-list"></div>
+                    </div>
+                    <div id="weapon-tab-cases" class="weapon-subpage" style="display:none">
+                        <div class="case-card" onclick="openCaseInfo()">
+                            <div style="font-size:48px">📦</div>
+                            <div><strong>Оружейный кейс</strong><p style="margin:6px 0;color:#b9c1b2;font-size:13px">Случайное оружие. Предмет сразу попадёт в инвентарь.</p></div>
+                            <button class="btn btn-small" onclick="event.stopPropagation(); openWeaponCase()">ОТКРЫТЬ · 50 🪙</button>
+                        </div>
+                        <div style="font-size:12px;color:#9da695;margin:8px 0">Возможные предметы:</div>
+                        <div class="case-drops">🔫 Пистолет · ✨ Золотой пистолет · 🔥 Автомат · 🔪 Нож · AK-47 · 🚀 Гранатомёт</div>
+                    </div>
+                    <div id="weapon-tab-market" class="weapon-subpage" style="display:none">
+                        <div class="market-head"><span>Предметы игроков</span><button class="btn btn-small" onclick="refreshWeaponMarket()">ОБНОВИТЬ</button></div>
+                        <div id="weapon-market-status" class="market-status">Подключение к рынку…</div>
+                        <div id="weapon-market-list"></div>
+                    </div>
+                    <div id="weapon-shop-catalog" style="display:none; grid-template-columns:1fr 1fr; gap:10px;">
                     <div class="list-item" style="flex-direction: column;">
                         <span style="font-size: 14px; margin-bottom: 5px;">🔫 Пистолет</span>
                         <button class="btn btn-small" id="buy-pistol-btn" onclick="buyWeapon('pistol', 0)" style="font-size: 11px; padding: 5px;">ВЫБРАТЬ</button>
@@ -381,6 +468,7 @@
                     <div class="list-item" style="flex-direction: column;">
                         <span style="font-size: 14px; margin-bottom: 5px;">🚀 Гранатомёт</span>
                         <button class="btn btn-small" id="buy-bazooka-btn" onclick="buyWeapon('bazooka', 150)" style="font-size: 11px; padding: 5px;">150 🪙</button>
+                    </div>
                     </div>
                 </div>
 
@@ -558,6 +646,14 @@
         </div>
     </div>
 
+    <div id="item-action-modal" class="modal item-action-modal">
+        <span class="modal-close" onclick="closeItemAction()">&times;</span>
+        <div id="item-action-icon" class="action-icon">🔫</div>
+        <h2 id="item-action-title">Предмет</h2>
+        <p id="item-action-info" style="color:#b9c1b2;text-align:center;margin:0 0 16px"></p>
+        <div id="item-action-buttons" class="action-buttons"></div>
+    </div>
+
     <div id="custom-modal" class="modal" style="display: none; width: 300px; padding: 15px;">
         <span class="modal-close" onclick="document.getElementById('custom-modal').style.display='none'">&times;</span>
         <h3 id="custom-title" style="margin-top:0; color: #ffde00; text-align: center;">НАСТРОЙКА</h3>
@@ -599,6 +695,25 @@
         <p style="font-size: 12px; color: #aaa; text-align: center; margin-top: 10px;">[Q] - закрыть</p>
     </div>
 
+    <div id="settings-modal" class="modal">
+        <span class="modal-close" onclick="document.getElementById('settings-modal').style.display='none'">&times;</span>
+        <h2>НАСТРОЙКИ</h2>
+        <label class="list-item"><span>Сенсорное управление</span><input type="checkbox" id="mobile-controls-toggle" checked></label>
+        <label class="list-item" style="flex-direction:column;align-items:stretch;gap:8px"><span>Чувствительность обзора</span><input id="touch-sensitivity" type="range" min="0.002" max="0.012" step="0.001" value="0.005"></label>
+        <p style="font-size:13px;color:#ccc">На телефоне: левый круг — движение, свайп справа — обзор, кнопки — стрельба, прыжок и перезарядка.</p>
+        <button class="btn btn-small" onclick="document.getElementById('settings-modal').style.display='none'">ГОТОВО</button>
+    </div>
+    <div id="mobile-controls">
+        <div id="touch-look-area"></div>
+        <div id="touch-stick" class="touch-stick" aria-label="Движение"></div>
+        <button id="touch-fire" class="touch-btn">ОГОНЬ</button>
+        <button id="touch-jump" class="touch-btn">↑</button>
+        <button id="touch-reload" class="touch-btn">R</button>
+        <button id="touch-weapons" class="touch-btn">ОРУЖИЕ</button>
+        <button id="touch-emotions" class="touch-btn">ЭМОЦИИ</button>
+        <button id="touch-pause" class="touch-btn">Ⅱ</button>
+    </div>
+
     <div id="pause-modal" class="modal">
         <h2>ПАУЗА</h2>
         <button class="btn" style="width: 100%; margin-bottom: 10px;" onclick="controls.lock()">ПРОДОЛЖИТЬ</button>
@@ -629,7 +744,7 @@
         <div style="font-size: 24px;">Ваш счет: <span id="score">0</span></div>
         <div id="nickname-tag" style="color: #ffde00; font-weight: bold;"></div>
         <div id="ammo-hud" style="font-size: 32px; color: #ffde00; font-weight: bold; margin-top: 10px;">30 / ∞</div>
-        <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">[Q] Спавн | [ПКМ] Двигать | [Колесико] Вращать | [X] Удалить | [R] Перезарядка</div>
+        <div style="font-size: 9px; margin-top: 5px; opacity: 0.7;">[Q] Спавн · [X] Удалить · [R] Перезарядка</div>
     </div>
     
     <div id="hp-bar"><div id="hp-fill"></div></div>
@@ -898,7 +1013,9 @@
             localStorage.setItem('cg_nick', nick);
             document.getElementById('nickname-tag').innerText = nick;
             resetGame(); setupNetworkListeners(); 
-            controls.lock();
+            if (matchMedia('(pointer: coarse)').matches && mobileToggle.checked) {
+                isPlaying = true; menu.style.display='none'; ui.style.display='block'; crosshair.style.display='block'; hpBar.style.display='block'; chat.style.display='flex'; timerHud.style.display='block'; chatInput.style.display='none'; syncMobileControls();
+            } else controls.lock();
         }
 
         function buildMap(mapType) {
@@ -1033,8 +1150,213 @@
             document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
             document.querySelectorAll('.shop-container').forEach(c => c.style.display = 'none');
-            document.getElementById('shop-' + tab).style.display = 'grid';
+            document.getElementById('shop-' + tab).style.display = tab === 'weapons' ? 'block' : 'grid';
+            if (tab === 'weapons') window.switchWeaponTab('inventory');
         };
+
+        const weaponNames = { pistol:'Пистолет', gold_pistol:'Золотой пистолет', rifle:'Автомат', knife:'Нож', ak47:'AK-47', bazooka:'Гранатомёт' };
+        const weaponIcons = { pistol:'🔫', gold_pistol:'✨', rifle:'🔥', knife:'🔪', ak47:'🔫', bazooka:'🚀' };
+        let marketItems = [];
+        let marketListenerReady = false;
+        let marketRef = null;
+        let walletRef = null;
+        const marketNick = () => (nickInput.value.trim() || 'Player').slice(0,12);
+        const marketUserKey = () => marketNick().replace(/[.#$\[\]/]/g, '_') + '_' + (localStorage.getItem('cg_market_id') || (() => { const id = Math.random().toString(36).slice(2,10); localStorage.setItem('cg_market_id', id); return id; })());
+        const marketOwner = marketUserKey();
+        function marketNotice(message) {
+            const el = document.getElementById('weapon-market-status');
+            if (el) el.textContent = message;
+        }
+        window.switchWeaponTab = (tab) => {
+            ['inventory','cases','market'].forEach(key => {
+                document.getElementById('weapon-tab-' + key).style.display = key === tab ? 'block' : 'none';
+                document.getElementById('weapon-tab-' + key + '-btn').classList.toggle('active', key === tab);
+            });
+            if (tab === 'inventory') renderWeaponInventory();
+            if (tab === 'market') { connectWeaponMarket(); renderWeaponMarket(); }
+        };
+        function showItemActions({icon='🔫',title,info='',actions=[]}) {
+            document.getElementById('item-action-icon').textContent = icon;
+            document.getElementById('item-action-title').textContent = title;
+            document.getElementById('item-action-info').textContent = info;
+            const root = document.getElementById('item-action-buttons');
+            root.innerHTML = '';
+            actions.forEach(({label,run}) => {
+                const b = document.createElement('button');
+                b.className = 'btn btn-small'; b.textContent = label;
+                b.onclick = () => { closeItemAction(); run(); };
+                root.appendChild(b);
+            });
+            document.getElementById('item-action-modal').style.display = 'flex';
+        }
+        window.closeItemAction = () => document.getElementById('item-action-modal').style.display = 'none';
+        window.openCaseInfo = () => showItemActions({
+            icon:'📦', title:'Оружейный кейс',
+            info:'Случайное оружие за 50 монет. Выпавший предмет сразу попадёт в инвентарь.',
+            actions:[{label:'ОТКРЫТЬ · 50 🪙',run:()=>window.openWeaponCase()},{label:'ПОНЯТНО',run:()=>{}}]
+        });
+        function renderWeaponInventory() {
+            const root = document.getElementById('weapon-inventory-list');
+            if (!root) return;
+            root.innerHTML = '';
+            if (!ownedWeapons.length) {
+                root.innerHTML = '<div class="market-status">Инвентарь пуст. Открой кейс за 50 монет или купи оружие на рынке.</div>';
+                return;
+            }
+            ownedWeapons.forEach((id) => {
+                const card = document.createElement('div');
+                card.className = 'weapon-card';
+                const name = weaponNames[id] || id;
+                card.innerHTML = `<span style="font-size:42px">${weaponIcons[id] || '🔫'}</span><div class="weapon-name">${name}<small>${currentWeapon === id ? 'Экипировано' : 'В инвентаре'}</small></div><small style="color:#a7b58b">Нажми для действий</small>`;
+                card.onclick = () => showItemActions({
+                    icon:weaponIcons[id] || '🔫', title:name,
+                    info:currentWeapon === id ? 'Оружие уже экипировано.' : 'Предмет находится в твоём инвентаре.',
+                    actions:[
+                        {label:currentWeapon === id ? 'ВЫБРАНО' : 'ПРИМЕНИТЬ',run:()=>selectWeapon(id)},
+                        {label:'ПРОДАТЬ',run:()=>listWeaponForSale(id)}
+                    ]
+                });
+                root.appendChild(card);
+            });
+        }
+        window.openWeaponCase = () => {
+            if (coins < 50) { marketNotice('Не хватает монет для открытия кейса.'); return; }
+            coins -= 50;
+            const pool = ['pistol','gold_pistol','rifle','knife','ak47','bazooka'];
+            const drop = pool[Math.floor(Math.random() * pool.length)];
+            ownedWeapons.push(drop);
+            localStorage.setItem('cg_coins', coins);
+            localStorage.setItem('cg_weapons', JSON.stringify(ownedWeapons));
+            updateShopUI(); renderWeaponInventory();
+            marketNotice(`Выпало: ${weaponNames[drop]}! Предмет добавлен в инвентарь.`);
+            if (typeof addChatMessage === 'function') addChatMessage(`Кейс открыт: ${weaponNames[drop]}!`, 'kill');
+        };
+        function connectWeaponMarket() {
+            if (marketListenerReady) return;
+            if (!database) { marketNotice('Демо-режим: онлайн-база не подключена.'); return; }
+            try {
+                marketRef = database.ref('weaponMarket/listings');
+                walletRef = database.ref('weaponMarket/wallets/' + marketOwner);
+                marketRef.on('value', snap => {
+                    marketItems = Object.entries(snap.val() || {}).map(([key, item]) => ({...item, key}));
+                    renderWeaponMarket();
+                    marketNotice('Онлайн-рынок подключён · объявления обновляются автоматически.');
+                }, () => marketNotice('Нет доступа к онлайн-рынку. Проверь правила Firebase Database.'));
+                walletRef.on('value', snap => {
+                    const balance = Number(snap.val() || 0);
+                    if (balance > 0) { coins += balance; localStorage.setItem('cg_coins', coins); walletRef.set(0); updateShopUI(); }
+                });
+                marketListenerReady = true;
+            } catch(e) { marketNotice('Онлайн-рынок недоступен: ' + e.message); }
+        }
+        window.refreshWeaponMarket = () => {
+            if (!database) { renderWeaponMarket(); marketNotice('Демо-режим: объявления доступны только в этой вкладке.'); return; }
+            connectWeaponMarket();
+            marketRef && marketRef.once('value').then(snap => {
+                marketItems = Object.entries(snap.val() || {}).map(([key,item]) => ({...item,key}));
+                renderWeaponMarket();
+            }).catch(() => marketNotice('Не удалось обновить рынок. Проверь доступ Firebase.'));
+        };
+        function renderWeaponMarket() {
+            const root = document.getElementById('weapon-market-list');
+            if (!root) return;
+            root.innerHTML = '';
+            if (!marketItems.length) { root.innerHTML = '<div class="market-status">Пока нет объявлений. Выставь предмет из инвентаря.</div>'; return; }
+            marketItems.slice().sort((a,b) => Number(a.price)-Number(b.price)).forEach(item => {
+                const card = document.createElement('div'); card.className = 'weapon-card';
+                const name = weaponNames[item.weapon] || item.weapon;
+                const owner = item.owner === marketOwner;
+                card.innerHTML = `<span style="font-size:42px">${weaponIcons[item.weapon] || '🔫'}</span><div class="weapon-name">${name}<small>${owner ? 'Твоё объявление' : 'Продавец: ' + String(item.nick || 'Игрок').replace(/[&<>"]/g,'')}</small></div><strong>${Number(item.price)} 🪙</strong><small style="color:#a7b58b">Нажми для информации</small>`;
+                card.onclick = () => showItemActions({
+                    icon:weaponIcons[item.weapon] || '🔫', title:name,
+                    info:`Продавец: ${item.nick || 'Игрок'} · Цена: ${Number(item.price)} монет`,
+                    actions: owner
+                        ? [{label:'ВЕРНУТЬ В ИНВЕНТАРЬ',run:()=>returnMarketWeapon(item)},{label:'ЗАКРЫТЬ',run:()=>{}}]
+                        : [{label:'КУПИТЬ',run:()=>buyMarketWeapon(item)},{label:'ЗАКРЫТЬ',run:()=>{}}]
+                });
+                root.appendChild(card);
+            });
+        }
+        async function listWeaponForSale(id) {
+            if (ownedWeapons.filter(x => x === id).length < 1) return;
+            const raw = prompt(`За сколько монет выставить ${weaponNames[id] || id}?`, '100');
+            if (raw === null) return;
+            const price = Math.floor(Number(raw));
+            if (!Number.isSafeInteger(price) || price < 1) { alert('Укажи цену от 1 монеты.'); return; }
+            if (database) {
+                try {
+                    connectWeaponMarket();
+                    const ref = database.ref('weaponMarket/listings').push();
+                    await ref.set({weapon:id,price,nick:marketNick(),owner:marketOwner,createdAt:Date.now()});
+                    const i = ownedWeapons.indexOf(id); if (i >= 0) ownedWeapons.splice(i,1);
+                    localStorage.setItem('cg_weapons',JSON.stringify(ownedWeapons));
+                    renderWeaponInventory(); renderWeaponMarket();
+                    marketNotice('Предмет выставлен на онлайн-рынке.');
+                } catch(e) { marketNotice('Не удалось выставить предмет. Проверь правила Firebase.'); }
+            } else {
+                const i = ownedWeapons.indexOf(id); if (i >= 0) ownedWeapons.splice(i,1);
+                marketItems.push({weapon:id,price,nick:marketNick(),owner:marketOwner,key:'local_'+Date.now()});
+                localStorage.setItem('cg_weapons',JSON.stringify(ownedWeapons));
+                renderWeaponInventory(); renderWeaponMarket();
+                marketNotice('Локальное объявление создано (не видно другим игрокам).');
+            }
+        }
+        async function returnMarketWeapon(item) {
+            if (item.owner !== marketOwner) {
+                marketNotice('Вернуть можно только собственное объявление.');
+                return;
+            }
+            if (String(item.key).startsWith('local_') || !database || !marketRef) {
+                if (String(item.key).startsWith('local_')) {
+                    marketItems = marketItems.filter(x => x.key !== item.key);
+                    ownedWeapons.push(item.weapon);
+                    localStorage.setItem('cg_weapons', JSON.stringify(ownedWeapons));
+                    renderWeaponInventory();
+                    renderWeaponMarket();
+                    marketNotice('Предмет снят с рынка и возвращён в инвентарь.');
+                } else {
+                    marketNotice('Не удалось снять объявление: онлайн-рынок не подключён.');
+                }
+                return;
+            }
+            try {
+                const listingRef = marketRef.child(item.key);
+                const result = await listingRef.transaction(current => current && current.owner === marketOwner ? null : current);
+                if (!result.committed || result.snapshot.val()) {
+                    marketNotice('Не удалось вернуть предмет: объявление уже изменилось или недоступно.');
+                    return;
+                }
+                ownedWeapons.push(item.weapon);
+                localStorage.setItem('cg_weapons', JSON.stringify(ownedWeapons));
+                renderWeaponInventory();
+                renderWeaponMarket();
+                marketNotice('Предмет снят с рынка и возвращён в инвентарь.');
+            } catch(e) {
+                marketNotice('Ошибка возврата предмета. Проверь подключение и правила Firebase.');
+            }
+        }
+
+        async function buyMarketWeapon(item) {
+            if (coins < Number(item.price)) { marketNotice('Не хватает монет.'); return; }
+            if (!database || !marketRef || String(item.key).startsWith('local_')) {
+                if (String(item.key).startsWith('local_')) {
+                    coins -= Number(item.price); ownedWeapons.push(item.weapon);
+                    marketItems = marketItems.filter(x => x.key !== item.key);
+                    localStorage.setItem('cg_coins',coins); localStorage.setItem('cg_weapons',JSON.stringify(ownedWeapons));
+                    updateShopUI(); renderWeaponInventory(); renderWeaponMarket(); marketNotice('Покупка выполнена в локальном демо-режиме.');
+                } else marketNotice('Онлайн-покупка требует подключения к Firebase.');
+                return;
+            }
+            try {
+                const listingRef = marketRef.child(item.key);
+                const result = await listingRef.transaction(current => current && current.owner !== marketOwner && Number(current.price) === Number(item.price) && coins >= Number(current.price) ? null : current);
+                if (!result.committed || result.snapshot.val()) { marketNotice('Предмет уже купили или объявление изменилось.'); return; }
+                coins -= Number(item.price); ownedWeapons.push(item.weapon);
+                localStorage.setItem('cg_coins',coins); localStorage.setItem('cg_weapons',JSON.stringify(ownedWeapons));
+                database.ref('weaponMarket/wallets/' + item.owner).transaction(v => Number(v || 0) + Number(item.price));
+                updateShopUI(); renderWeaponInventory(); renderWeaponMarket(); marketNotice('Покупка успешна! Оружие добавлено в инвентарь.');
+            } catch(e) { marketNotice('Ошибка покупки. Проверь правила Firebase Database.'); }
+        }
 
         window.openCustomizer = (cat) => {
             currentEditingCat = cat;
@@ -1282,6 +1604,7 @@
 
         document.getElementById('shop-btn').addEventListener('click', () => { 
             updateShopUI();
+            renderWeaponInventory();
             shopModal.style.display = 'flex'; 
             initShopPreview();
         });
@@ -1562,6 +1885,36 @@
         function updateHatMesh(model, hatId, transforms) {
             if (!model || !model.userData.headGroup) return;
             const t = transforms || (model === playerModel || model === menuChicken || model === shopChicken ? itemTransforms.hat : null);
+            // Default helmet stays on the chicken, but is hidden whenever a purchased hat is equipped.
+            let helmet = model.userData.defaultHelmetGroup;
+            if (!helmet) {
+                helmet = new THREE.Group();
+                model.userData.headGroup.add(helmet);
+                model.userData.defaultHelmetGroup = helmet;
+                const shell = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.52, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+                    new THREE.MeshPhongMaterial({color: 0x53613a})
+                );
+                shell.position.y = 0.24;
+                helmet.add(shell);
+                const brim = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.55, 0.55, 0.09, 24),
+                    new THREE.MeshPhongMaterial({color: 0x39452b})
+                );
+                brim.position.y = 0.22;
+                helmet.add(brim);
+                const front = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.48, 0.07, 0.24),
+                    new THREE.MeshPhongMaterial({color: 0x39452b})
+                );
+                front.position.set(0, 0.25, 0.39);
+                helmet.add(front);
+                // Keep the default helmet at its larger size, but lower it slightly on the chicken.
+                helmet.scale.set(1.22, 1.22, 1.22);
+                helmet.position.y = 0.04;
+            }
+            helmet.visible = !hatId || hatId === 'none';
+
             let g = model.userData.hatGroup;
             if (!g) { g = new THREE.Group(); model.userData.headGroup.add(g); model.userData.hatGroup = g; }
             g.clear();
@@ -1692,20 +2045,8 @@
                 model.userData.beardMesh.visible = true;
             } else if (model.userData.beardMesh) model.userData.beardMesh.visible = false;
 
-            if (id === 'gas_mask') {
-                if (!model.userData.gasMask) {
-                    const mask = new THREE.Group();
-                    const face = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8, 0, Math.PI, 0, Math.PI), new THREE.MeshPhongMaterial({color: 0x222222}));
-                    face.rotation.x = -Math.PI/2;
-                    const filter = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2), new THREE.MeshPhongMaterial({color: 0x111111}));
-                    filter.position.set(0, -0.2, 0.4); filter.rotation.x = Math.PI/2;
-                    mask.add(face); mask.add(filter);
-                    model.userData.headGroup.add(mask);
-                    model.userData.gasMask = mask;
-                }
-                apply(model.userData.gasMask);
-                model.userData.gasMask.visible = true;
-            } else if (model.userData.gasMask) model.userData.gasMask.visible = false;
+            // Противогаз убран с модели цыплёнка.
+            if (model.userData.gasMask) model.userData.gasMask.visible = false;
 
             if (id === 'mustache') {
                 if (!model.userData.mustacheMesh) {
@@ -1829,6 +2170,9 @@
             leftWing.position.set(-0.55, 0, 0); headGroup.add(leftWing);
             const rightWing = leftWing.clone(); rightWing.position.x = 0.55; headGroup.add(rightWing);
             
+
+            // Убраны встроенные тактические аксессуары: шлем/экипировка не перекрывают купленные предметы.
+
             if (withWeapon) {
                 const gun = createWeaponModel('pistol');
                 gun.position.set(0.1, -0.2, 0.4); 
@@ -1881,6 +2225,61 @@
         updateHatMesh(menuChicken, currentHat);
 
         playBtn.addEventListener('click', () => { startFromModal(10, 20); });
+        const settingsModal = document.getElementById('settings-modal');
+        const mobileControls = document.getElementById('mobile-controls');
+        const mobileToggle = document.getElementById('mobile-controls-toggle');
+        const touchSensitivity = document.getElementById('touch-sensitivity');
+        let touchLookId = null, touchLookX = 0, touchLookY = 0, stickId = null, stickOrigin = null;
+        let touchMoveX = 0, touchMoveY = 0;
+        document.getElementById('settings-btn').addEventListener('click', () => settingsModal.style.display = 'flex');
+        function syncMobileControls() {
+            mobileControls.classList.toggle('enabled', mobileToggle.checked && isPlaying && matchMedia('(pointer: coarse)').matches);
+        }
+        mobileToggle.addEventListener('change', syncMobileControls);
+        document.getElementById('touch-stick').addEventListener('pointerdown', e => {
+            stickId = e.pointerId; stickOrigin = {x:e.clientX,y:e.clientY}; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) { /* Pointer may already be inactive on some mobile browsers. */ }
+        });
+        document.getElementById('touch-stick').addEventListener('pointermove', e => {
+            if (e.pointerId !== stickId || !stickOrigin) return;
+            const dx = e.clientX-stickOrigin.x, dy=e.clientY-stickOrigin.y, len=Math.max(1,Math.hypot(dx,dy));
+            touchMoveX=Math.max(-1,Math.min(1,dx/55)); touchMoveY=Math.max(-1,Math.min(1,dy/55));
+            moveLeft=touchMoveX<-.2; moveRight=touchMoveX>.2; moveForward=touchMoveY<-.2; moveBackward=touchMoveY>.2;
+        });
+        function releaseStick(e) { if (e.pointerId!==stickId) return; stickId=null; stickOrigin=null; touchMoveX=touchMoveY=0; moveLeft=moveRight=moveForward=moveBackward=false; }
+        document.getElementById('touch-stick').addEventListener('pointerup',releaseStick);
+        document.getElementById('touch-stick').addEventListener('pointercancel',releaseStick);
+        document.getElementById('touch-look-area').addEventListener('pointerdown',e=>{ if(touchLookId!==null)return; touchLookId=e.pointerId; touchLookX=e.clientX; touchLookY=e.clientY; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) { /* Continue tracking at document level if capture is unavailable. */ } });
+        document.addEventListener('pointermove',e=>{
+            if(e.pointerId!==touchLookId || !isPlaying)return;
+            const sens=Number(touchSensitivity.value); camera.rotation.order='YXZ';
+            camera.rotation.y -= (e.clientX-touchLookX)*sens; camera.rotation.x -= (e.clientY-touchLookY)*sens;
+            camera.rotation.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,camera.rotation.x)); touchLookX=e.clientX; touchLookY=e.clientY;
+        });
+        const lookEnd=e=>{if(e.pointerId===touchLookId)touchLookId=null;};
+        document.addEventListener('pointerup',lookEnd);
+        document.addEventListener('pointercancel',lookEnd);
+        document.getElementById('touch-fire').addEventListener('pointerdown',e=>{e.preventDefault(); if(!isPlaying)return; if(currentWeapon!=='knife' && (ammo<=0||isReloading))return; if(currentWeapon==='rifle') isShooting=true; else {const d=new THREE.Vector3();camera.getWorldDirection(d);shoot(camera.position,d);} });
+        document.getElementById('touch-fire').addEventListener('pointerup',()=>isShooting=false);
+        document.getElementById('touch-fire').addEventListener('pointercancel',()=>isShooting=false);
+        document.getElementById('touch-jump').addEventListener('pointerdown',e=>{e.preventDefault(); if(canJump){velocity.y+=20;canJump=false;}});
+        document.getElementById('touch-reload').addEventListener('pointerdown',e=>{e.preventDefault(); if(isPlaying && !isReloading && ammo<maxAmmo){startReload();}});
+        document.getElementById('touch-weapons').addEventListener('click', e => { e.preventDefault(); if (isPlaying) document.dispatchEvent(new KeyboardEvent('keydown', {code:'KeyE'})); });
+        document.getElementById('touch-emotions').addEventListener('click', e => { e.preventDefault(); if (isPlaying) document.dispatchEvent(new KeyboardEvent('keydown', {code:'KeyF'})); });
+        document.getElementById('touch-pause').addEventListener('click', e => {
+            e.preventDefault();
+            if (!isPlaying) return;
+            // Mobile touch controls do not use Pointer Lock, so pause them directly.
+            const pauseMenu = document.getElementById('pause-menu');
+            pauseMenu.style.display = 'flex';
+            ui.style.display = 'none';
+            crosshair.style.display = 'none';
+            hpBar.style.display = 'none';
+            chat.style.display = 'none';
+            timerHud.style.display = 'none';
+            isPlaying = false;
+            syncMobileControls();
+        });
+
 
         controls.addEventListener('lock', () => {
             menu.style.display = 'none';
@@ -1895,6 +2294,7 @@
             chatInput.style.display = 'none';
             weaponMenu.style.display = 'none';
             isPlaying = true;
+            syncMobileControls();
         });
 
         controls.addEventListener('unlock', () => {
@@ -1909,11 +2309,24 @@
                 chat.style.display = 'none';
                 timerHud.style.display = 'none';
                 isPlaying = false;
+                syncMobileControls();
             }
         });
 
         window.resumeGame = () => {
-            controls.lock();
+            const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+            if (touchDevice) {
+                document.getElementById('pause-menu').style.display = 'none';
+                ui.style.display = 'block';
+                crosshair.style.display = 'block';
+                hpBar.style.display = 'block';
+                chat.style.display = 'flex';
+                timerHud.style.display = 'block';
+                isPlaying = true;
+                syncMobileControls();
+            } else {
+                controls.lock();
+            }
         };
 
         window.exitGame = () => {
@@ -1953,7 +2366,10 @@
             }
             if (e.code === 'KeyE' && isPlaying) {
                 if (weaponMenu.style.display === 'block') {
-                    weaponMenu.style.display = 'none'; controls.lock();
+                    weaponMenu.style.display = 'none';
+                    const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+                    if (!touchDevice) controls.lock();
+                    touchLookId = null;
                 } else {
                     weaponList.innerHTML = '';
                     ownedWeapons.forEach(w => {
@@ -1971,7 +2387,10 @@
                             playerWeapon.clear();
                             playerWeapon.add(createWeaponModel(w));
                             weaponMenu.style.display = 'none';
-                            controls.lock();
+                            // On touch devices, keep the swipe-look controls active without requesting Pointer Lock.
+                            const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+                            if (!touchDevice) controls.lock();
+                            touchLookId = null;
                         };
                         weaponList.appendChild(div);
                     });
@@ -3060,7 +3479,9 @@ shopChicken.userData.rightLeg.rotation.x = 0;
                 currentEmotion = name;
             }
             document.getElementById('emotion-menu').style.display = 'none';
-            controls.lock();
+            const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+            if (!touchDevice) controls.lock();
+            touchLookId = null;
         };
 
         window.addEventListener('resize', () => {
