@@ -193,6 +193,7 @@
         }
         
         #crosshair {
+            opacity: 0.8;
             position: absolute;
             top: 50%;
             left: 50%;
@@ -315,7 +316,7 @@
 
 
         #settings-modal { max-width: 440px; }
-        #mobile-controls { position: fixed; inset: 0; z-index: 250; display: none; pointer-events: none; touch-action: none; }
+        #mobile-controls { position: fixed; inset: 0; z-index: 1101; display: none; pointer-events: none; touch-action: none; }
         #mobile-controls.enabled { display: block; }
         .touch-stick { position: absolute; left: 24px; bottom: 28px; width: 132px; height: 132px; border: 2px solid rgba(255,255,255,.55); border-radius: 50%; background: rgba(20,30,15,.35); pointer-events: auto; }
         .touch-stick:after { content: ''; position: absolute; width: 48px; height: 48px; left: 40px; top: 40px; border-radius: 50%; background: rgba(220,235,190,.65); border: 1px solid #fff; }
@@ -418,6 +419,12 @@
         .case-spin-result{font-size:clamp(18px,4vw,24px);font-weight:800;color:#e5ed72;margin:12px 0}
         @media(max-width:600px){.case-spin-panel{width:100%}.case-spin-item{flex-basis:92px}.case-spin-track{height:116px}}
 
+
+/* Фон линзы снайперского прицела: 80% прозрачности.
+   Обводка и линии прицела остаются без изменений. */
+#sniper-scope > div:nth-child(2) {
+  background: radial-gradient(circle, rgba(38,51,41,.2) 0%, rgba(17,17,17,.2) 80%) !important;
+}
 </style>
 <style>
 /* Каталог прокручивается отдельно, а счётчик монет и тестовая кнопка
@@ -602,12 +609,9 @@
                         </div>
                         <div style="font-size:12px;color:#9da695;margin:8px 0">Возможные предметы и шансы выпадения обычного оружейного кейса:</div>
                         <div class="case-drops" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:7px">
-                            <div style="color:#b8bec7;border:1px solid #b8bec7;border-radius:7px;padding:7px">🔫 Пистолет · Обычное · 40%</div>
-                            <div style="color:#55c878;border:1px solid #55c878;border-radius:7px;padding:7px">🔥 Автомат · Необычное · 25%</div>
-                            <div style="color:#48a9ff;border:1px solid #48a9ff;border-radius:7px;padding:7px">🔪 Нож · Редкое · 15%</div>
-                            <div style="color:#b27aff;border:1px solid #b27aff;border-radius:7px;padding:7px">🔫 AK-47 · Эпическое · 10%</div>
-                            <div style="color:#ffb52e;border:1px solid #ffb52e;border-radius:7px;padding:7px">✨ Золотой пистолет · Легендарное · 7%</div>
-                            <div style="color:#ff5964;border:1px solid #ff5964;border-radius:7px;padding:7px">🚀 Гранатомёт · Мифическое · 3%</div>
+                            <div>🔫 Пистолет · 32%</div><div>🔥 Автомат · 22%</div><div>🔪 Нож · 14%</div>
+                            <div>🔫 AK-47 · 10%</div><div>✨ Золотой пистолет · 7%</div><div>🚀 Гранатомёт · 3%</div>
+                            <div>🦋 Бабочка · 4%</div><div>🔪 M9 Bayonet · 4%</div><div>🔫 USP · 4%</div><div>🎯 Снайперская винтовка · 2%</div>
                         </div>
                     </div>
                     <div id="weapon-tab-market" class="weapon-subpage" style="display:none">
@@ -818,6 +822,7 @@
         <div id="shop-footer" style="flex:0 0 auto; text-align:center; padding:8px 0 2px; background:#101710; border-top:1px solid rgba(255,222,0,.25);">
             <p style="margin:4px 0 8px; font-size:18px; color:#ffde00;">Монеты: <span id="coins-display">0</span></p>
             <button class="btn btn-small" id="test-add-coins-btn" onclick="testAddCoins()" style="background:#806b2e;border:1px solid #ffde00;color:#fff3b0;padding:8px 14px;font-weight:bold;">🧪 ТЕСТ: +1000 МОНЕТ</button>
+            <button class="btn btn-small" id="test-give-weapon-btn" onclick="testGiveWeapon()" style="background:#285b3b;border:1px solid #69d58a;color:#eaffef;padding:8px 14px;font-weight:bold;margin:4px;">🧪 ТЕСТ: ВЫДАТЬ ОРУЖИЕ</button>
         </div>
     </div>
 
@@ -877,6 +882,11 @@
         <label class="list-item"><span>Прицел</span><select id="crosshair-shape"><option value="circle">Круглый</option><option value="square">Квадратный</option></select></label>
         <button class="btn btn-small" id="customize-controls-btn" type="button">НАСТРОИТЬ КНОПКИ</button>
         <label class="list-item" style="flex-direction:column;align-items:stretch;gap:8px"><span>Чувствительность обзора</span><input id="touch-sensitivity" type="range" min="0.002" max="0.012" step="0.001" value="0.005"></label>
+        <label class="list-item" style="flex-direction:column;align-items:stretch;gap:8px">
+            <span>Дальность руки от камеры: <b id="hand-distance-value">0.50</b></span>
+            <input id="hand-camera-distance" type="range" min="0.20" max="1.40" step="0.01" value="0.50">
+            <small style="color:#aaa">Только на вашем устройстве — другие игроки этого не увидят.</small>
+        </label>
         <p style="font-size:13px;color:#ccc">На телефоне: левый круг — движение, свайп справа — обзор, кнопки — стрельба, прыжок и перезарядка.</p>
         <button class="btn btn-small" onclick="document.getElementById('settings-modal').style.display='none'">ГОТОВО</button>
     </div>
@@ -892,6 +902,7 @@
         <button id="touch-jump" class="touch-btn">↑</button>
         <button id="touch-reload" class="touch-btn">R</button>
         <button id="touch-inspect" class="touch-btn" style="right:110px;bottom:250px">ОСМОТР</button>
+        <button id="touch-scope" type="button" class="touch-btn" style="display:none;right:110px;bottom:320px;width:68px;height:58px;border-radius:12px;z-index:1301;pointer-events:auto;touch-action:manipulation">ПРИЦЕЛ</button>
         <button id="touch-weapons" class="touch-btn">ОРУЖИЕ</button>
         <button id="touch-emotions" class="touch-btn">ЭМОЦИИ</button>
         <button id="touch-pause" class="touch-btn">Ⅱ</button>
@@ -932,6 +943,18 @@
     
     <div id="hp-bar"><div id="hp-fill"></div></div>
     <div id="crosshair"></div>
+    <button id="scope-button" type="button" class="btn btn-small" style="display:none;position:fixed;right:22px;bottom:245px;z-index:1300;padding:12px 18px;font-size:16px;pointer-events:auto;touch-action:manipulation">ПРИЦЕЛ</button>
+    <div id="sniper-scope" style="display:none;position:fixed;inset:0;z-index:1200;background:transparent;align-items:center;justify-content:center;overflow:hidden;pointer-events:none">
+        <div style="position:absolute;inset:0;background:radial-gradient(circle at center,transparent 0 27%,rgba(0,0,0,.98) 29% 100%);pointer-events:none"></div>
+        <div style="width:min(76vmin,620px);height:min(76vmin,620px);border:9px solid #202820;border-radius:50%;box-shadow:0 0 35px #000;position:relative;overflow:hidden;background:transparent;">
+            <div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:#d9e6d1;opacity:.9;transform:translateX(-50%)"></div>
+            <div style="position:absolute;top:50%;left:0;right:0;height:2px;background:#d9e6d1;opacity:.9;transform:translateY(-50%)"></div>
+            <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:#d9e6d1;opacity:.25;transform:translateX(-50%)"></div>
+            <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#d9e6d1;opacity:.25;transform:translateY(-50%)"></div>
+        </div>
+        <button id="scope-close" class="btn btn-small" style="position:fixed;top:22px;right:22px;z-index:1205;pointer-events:auto;touch-action:manipulation">ЗАКРЫТЬ ✕</button>
+        <div style="position:absolute;bottom:24px;color:#e5edc9;font-weight:bold;text-shadow:0 2px 4px #000">СНАЙПЕРСКИЙ ПРИЦЕЛ</div>
+    </div>
 
     <div id="chat">
         <div id="chat-messages"></div>
@@ -1350,16 +1373,15 @@
             if (tab === 'weapons') window.switchWeaponTab('inventory');
         };
 
-        const weaponNames = { pistol:'Пистолет', gold_pistol:'Золотой пистолет', rifle:'Автомат', knife:'Нож', butterfly_knife:'Нож-бабочка', m9_bayonet:'M9 Bayonet', ak47:'AK-47', bazooka:'Гранатомёт' };
-        const weaponIcons = { pistol:'🔫', gold_pistol:'✨', rifle:'🔥', knife:'🔪', butterfly_knife:'🦋', m9_bayonet:'🔪', ak47:'🔫', bazooka:'🚀' };
+        const weaponNames = { pistol:'Пистолет', usp:'USP', gold_pistol:'Золотой пистолет', rifle:'Автомат', sniper:'Снайперская винтовка', knife:'Нож', butterfly_knife:'Нож-бабочка', m9_bayonet:'M9 Bayonet', ak47:'AK-47', bazooka:'Гранатомёт' };
+        const weaponIcons = { pistol:'🔫', usp:'🔫', gold_pistol:'✨', rifle:'🔥', sniper:'🎯', knife:'🔪', butterfly_knife:'🦋', m9_bayonet:'🔪', ak47:'🔫', bazooka:'🚀' };
         // Редкость и шансы выпадения из оружейного кейса (в сумме 100%).
         const weaponRarity = {
-            pistol:     {name:'Обычное', color:'#b8bec7', chance:40},
-            rifle:      {name:'Необычное', color:'#55c878', chance:25},
-            knife:      {name:'Редкое', color:'#48a9ff', chance:15},
-            ak47:       {name:'Эпическое', color:'#b27aff', chance:10},
-            gold_pistol:{name:'Легендарное', color:'#ffb52e', chance:7},
-            bazooka:    {name:'Мифическое', color:'#ff5964', chance:3}
+            pistol:{name:'Обычное',color:'#b8bec7',chance:30}, rifle:{name:'Необычное',color:'#55c878',chance:22}, sniper:{name:'Эпическое',color:'#b27aff',chance:2},
+            knife:{name:'Редкое',color:'#48a9ff',chance:14}, ak47:{name:'Эпическое',color:'#b27aff',chance:10},
+            gold_pistol:{name:'Легендарное',color:'#ffb52e',chance:7}, bazooka:{name:'Мифическое',color:'#ff5964',chance:3},
+            butterfly_knife:{name:'Легендарное',color:'#ffb52e',chance:4}, m9_bayonet:{name:'Легендарное',color:'#ffb52e',chance:4},
+            usp:{name:'Эпическое',color:'#b27aff',chance:4}
         };
         const rarityOf = id => weaponRarity[id] || {name:'Неизвестно',color:'#b8bec7',chance:0};
         const rarityMarkup = id => { const r=rarityOf(id); return `<small style="display:block;color:${r.color};font-weight:800">${r.name}</small>`; };
@@ -1369,7 +1391,9 @@
             const paint = skinColor || '#aeb8b0';
             const glow = skinColor ? `filter:drop-shadow(0 0 5px ${paint})` : '';
             let shape = '';
-            if (type === 'butterfly_knife') {
+            if (type === 'usp') {
+                shape = `<path d="M18 24 L72 24 L86 31 L84 39 L53 39 L48 51 L34 51 L34 39 L18 37 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M18 24 L73 24 L78 18 L82 18 L82 30 L72 34 L18 34 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/>`;
+            } else if (type === 'butterfly_knife') {
                 shape = `<path d="M47 30 L82 9 L94 13 L58 35 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M47 34 L15 13 L5 18 L39 42 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M43 34 L19 53 L28 59 L51 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><path d="M53 34 L78 53 L69 59 L45 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><circle cx="47" cy="36" r="4" fill="#c5ccd0"/>`;
             } else if (type === 'm9_bayonet') {
                 shape = `<path d="M8 28 L76 19 L96 30 L76 40 L8 34 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M9 29 L30 29 L30 39 L9 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><path d="M29 29 L29 39" stroke="#c4cbc6" stroke-width="2"/>`;
@@ -1427,6 +1451,89 @@
             info:'Случайное оружие за 50 монет. Шансы выпадения: Обычное — 40% (серый); Необычное — 25% (зелёный); Редкое — 15% (синий); Эпическое — 10% (фиолетовый); Легендарное — 7% (золотой); Мифическое — 3% (красный). Выпавший предмет сразу попадёт в инвентарь.',
             actions:[{label:'ОТКРЫТЬ · 50 🪙',run:()=>window.openWeaponCase()},{label:'ПОНЯТНО',run:()=>{}}]
         });
+        window.openWeaponCase = () => {
+            if (coins < 50) { marketNotice('Недостаточно монет для открытия кейса.'); return; }
+            coins -= 50;
+            localStorage.setItem('cg_coins', coins);
+            if (typeof updateShopUI === 'function') updateShopUI();
+
+            const pool = Object.entries(weaponRarity);
+            const total = pool.reduce((sum, [,r]) => sum + r.chance, 0);
+            const pick = () => {
+                let roll = Math.random() * total;
+                for (const [id, rarity] of pool) {
+                    roll -= rarity.chance;
+                    if (roll <= 0) return id;
+                }
+                return pool[0][0];
+            };
+            const drop = pick();
+            const sequence = Array.from({length: 48}, () => pick());
+            sequence[sequence.length - 1] = drop;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'case-spin-overlay';
+            overlay.innerHTML = `<div class="case-spin-panel">
+                <div style="font-size:23px;font-weight:900">ОТКРЫТИЕ КЕЙСА</div>
+                <div style="color:#c4cdb8;margin-top:5px">Прокрутка предметов...</div>
+                <div class="case-spin-track"><div class="case-spin-strip"></div></div>
+                <div class="case-spin-result">Удачи!</div>
+                <button class="btn btn-small" id="case-spin-close" disabled style="opacity:.5">ЗАКРЫТЬ</button>
+            </div>`;
+            document.body.appendChild(overlay);
+            const strip = overlay.querySelector('.case-spin-strip');
+            sequence.forEach(id => {
+                const item = document.createElement('div');
+                item.className = 'case-spin-item';
+                const icon = weaponIcons[id] || '🔫';
+                const name = weaponNames[id] || id;
+                item.innerHTML = `<span>${icon}</span><b>${name}</b>`;
+                strip.appendChild(item);
+            });
+            const track = overlay.querySelector('.case-spin-track');
+            const itemWidth = window.innerWidth <= 600 ? 92 : 108;
+            const target = (sequence.length - 1) * itemWidth - track.clientWidth / 2 + itemWidth / 2;
+            strip.style.transition = 'none';
+            strip.style.transform = 'translateX(0)';
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                strip.style.transition = 'transform 5.2s cubic-bezier(.08,.72,.12,1)';
+                strip.style.transform = `translateX(-${Math.max(0,target)}px)`;
+            }));
+            setTimeout(() => {
+                ownedWeapons.push(drop);
+                localStorage.setItem('cg_weapons', JSON.stringify(ownedWeapons));
+                renderWeaponInventory();
+                const result = overlay.querySelector('.case-spin-result');
+                result.textContent = `ВЫПАЛО: ${weaponIcons[drop] || '🔫'} ${weaponNames[drop] || drop} · ${rarityOf(drop).name}`;
+                result.style.color = rarityOf(drop).color || '#e5ed72';
+                const close = overlay.querySelector('#case-spin-close');
+                close.disabled = false;
+                close.style.opacity = '1';
+                close.onclick = () => overlay.remove();
+            }, 5450);
+        };
+        // Временная тестовая выдача любого оружия без оплаты.
+        window.testGiveWeapon = function() {
+            const options = Object.keys(weaponNames).map(id => ({
+                label: `${weaponIcons[id] || '🔫'} ${weaponNames[id]}${ownedWeapons.includes(id) ? ' · УЖЕ ЕСТЬ' : ''}`,
+                run: () => {
+                    if (!ownedWeapons.includes(id)) {
+                        ownedWeapons.push(id);
+                        localStorage.setItem('cg_weapons', JSON.stringify(ownedWeapons));
+                    }
+                    selectWeapon(id);
+                    renderWeaponInventory();
+                    if (typeof marketNotice === 'function') marketNotice(`Тест: выдано оружие «${weaponNames[id]}».`);
+                }
+            }));
+            showItemActions({
+                icon: '🧪',
+                title: 'Тестовая выдача оружия',
+                info: 'Выбери любое оружие. Оно бесплатно добавится в инвентарь и сразу экипируется.',
+                actions: options
+            });
+        };
+
         function renderWeaponInventory() {
             const root = document.getElementById('weapon-inventory-list');
             if (!root) return;
@@ -1499,7 +1606,7 @@
             const root = document.getElementById('weapon-market-list');
             if (!root) return;
             root.innerHTML = '';
-            const catalog = ['pistol','rifle','knife','ak47','gold_pistol','bazooka'];
+            const catalog = ['pistol','usp','rifle','sniper','knife','butterfly_knife','m9_bayonet','ak47','gold_pistol','bazooka'];
             catalog.forEach(id => {
                 const offers = marketItems.filter(item => item && item.weapon === id && item.kind !== 'skin' && !item.skin)
                     .slice().sort((a,b) => Number(a.price)-Number(b.price));
@@ -1664,6 +1771,7 @@
         });
 
         window.selectWeapon = (id) => {
+            if (sniperScopeOpen && id !== 'sniper') closeSniperScope();
             if (id !== 'pistol' && !ownedWeapons.includes(id)) return;
             currentWeapon = id;
             localStorage.setItem('cg_current_weapon', id);
@@ -1683,6 +1791,7 @@
             }
             
             updateShopUI();
+            updateScopeButton();
         };
 
         window.buyWeapon = (id, price) => {
@@ -1864,8 +1973,61 @@
         nickInput.value = localStorage.getItem('cg_nick') || 'Player';
         document.getElementById('level-display').innerText = `Уровень: ${localStorage.getItem('cg_lvl') || 1}`;
 
+        let sniperScopeOpen = false;
+        let savedScopeFov = null;
+        function updateScopeButton() {
+            const show = isPlaying && currentWeapon === 'sniper';
+            document.getElementById('scope-button').style.display = show && !sniperScopeOpen ? 'block' : 'none';
+            const touchScope = document.getElementById('touch-scope');
+            if (touchScope) touchScope.style.display = show && !sniperScopeOpen ? 'block' : 'none';
+        }
+        function openSniperScope() {
+            if (!isPlaying || currentWeapon !== 'sniper' || sniperScopeOpen) return;
+            sniperScopeOpen = true;
+            savedScopeFov = camera.fov;
+            camera.fov = 24; camera.updateProjectionMatrix();
+            document.getElementById('sniper-scope').style.display = 'flex';
+            document.getElementById('crosshair').style.display = 'none';
+            document.getElementById('scope-button').style.display = 'none';
+            document.getElementById('touch-scope').style.display = 'none';
+        }
+        function closeSniperScope() {
+            if (!sniperScopeOpen) return;
+            sniperScopeOpen = false;
+            if (savedScopeFov !== null) { camera.fov = savedScopeFov; camera.updateProjectionMatrix(); }
+            document.getElementById('sniper-scope').style.display = 'none';
+            document.getElementById('crosshair').style.display = isPlaying ? 'block' : 'none';
+            updateScopeButton();
+        }
+        const desktopScopeButton = document.getElementById('scope-button');
+        // The right-hand scope button must receive taps even when the mobile look area is active.
+        ['pointerdown', 'touchstart', 'click'].forEach(eventName => {
+            desktopScopeButton.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+                openSniperScope();
+            }, { passive: false });
+        });
+        const touchScopeButton = document.getElementById('touch-scope');
+        // Mobile: handle both touch and pointer input; keep the button above the camera-look layer.
+        touchScopeButton.addEventListener('pointerdown', e => {
+            e.preventDefault(); e.stopPropagation();
+            openSniperScope();
+        }, { passive: false });
+        touchScopeButton.addEventListener('touchstart', e => {
+            e.preventDefault(); e.stopPropagation();
+            openSniperScope();
+        }, { passive: false });
+        touchScopeButton.addEventListener('click', e => {
+            e.preventDefault(); e.stopPropagation();
+            openSniperScope();
+        });
+        document.getElementById('scope-close').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); closeSniperScope(); });
+        document.getElementById('scope-close').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); closeSniperScope(); });
+        document.addEventListener('keydown', e => { if (e.code === 'Escape' && sniperScopeOpen) closeSniperScope(); });
+
         function setAmmoForWeapon(w) {
-            maxAmmo = (w === 'bazooka') ? 5 : 30;
+            maxAmmo = w === 'sniper' ? 1 : (w === 'bazooka' ? 5 : 30);
             ammo = maxAmmo;
             isReloading = false;
             document.getElementById('ammo-hud').innerText = `${ammo} / ∞`;
@@ -1874,7 +2036,7 @@
         function startReload() {
             if (['knife','butterfly_knife','m9_bayonet'].includes(currentWeapon) || isReloading || ammo >= maxAmmo) return;
             playerWeapon.userData.reloadStarted = performance.now();
-            playerWeapon.userData.reloadDuration = currentWeapon === 'bazooka' ? 2500 : 1500;
+            playerWeapon.userData.reloadDuration = currentWeapon === 'sniper' ? 1250 : (currentWeapon === 'bazooka' ? 2500 : 1500);
             isReloading = true;
             addChatMessage("Перезарядка...");
             const reloadTime = playerWeapon.userData.reloadDuration;
@@ -2114,6 +2276,17 @@
                 const b = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, 0.6), new THREE.MeshPhongMaterial({color: 0xcccccc}));
                 const h = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.25), new THREE.MeshPhongMaterial({color: 0x442200}));
                 h.position.z = 0.4; gun.add(b); gun.add(h);
+            } else if (type === 'sniper') {
+                const metal = new THREE.MeshPhongMaterial({color:0x303a35, shininess:65});
+                const wood = new THREE.MeshPhongMaterial({color:0x76583a});
+                const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.075,0.075,1.55),metal); barrel.position.z=-0.28; gun.add(barrel);
+                const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.16,0.17,0.62),metal); receiver.position.z=0.12; gun.add(receiver);
+                const stock = new THREE.Mesh(new THREE.BoxGeometry(0.13,0.2,0.62),wood); stock.position.set(0,-0.035,0.67); gun.add(stock);
+                const grip = new THREE.Mesh(new THREE.BoxGeometry(0.095,0.25,0.16),wood); grip.position.set(0,-0.19,0.25); gun.add(grip);
+                const mag = new THREE.Mesh(new THREE.BoxGeometry(0.09,0.24,0.16),metal); mag.position.set(0,-0.19,-0.02); gun.add(mag);
+                const scopeBody = new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.075,0.48,12),metal); scopeBody.rotation.x=Math.PI/2; scopeBody.position.set(0,0.16,0.02); gun.add(scopeBody);
+                [-0.19,0.22].forEach(z=>{const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.095,0.095,0.055,12),new THREE.MeshPhongMaterial({color:0x111713}));ring.rotation.x=Math.PI/2;ring.position.set(0,0.16,z);gun.add(ring);});
+                const bolt = new THREE.Group(); const boltHandle=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,0.2,8),metal); boltHandle.position.set(0.12,0.02,0.13); bolt.add(boltHandle); gun.add(bolt); gun.userData.sniperBolt=bolt;
             } else if (type === 'rifle') {
                 const body = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.9), new THREE.MeshPhongMaterial({color: col}));
                 gun.add(body);
@@ -2501,13 +2674,27 @@
         const playerHand = new THREE.Mesh(new RoundedBoxGeometry(0.15, 0.3, 0.6, 4, 0.05), new THREE.MeshPhongMaterial({color: 0xffffff}));
         playerHand.position.set(-0.12, -0.15, 0.1);
         playerWeapon.add(playerHand);
+        // Вторая рука поддерживает цевьё снайперки; первая работает затвором.
+        const supportHand = new THREE.Mesh(new RoundedBoxGeometry(0.14, 0.27, 0.48, 4, 0.05), new THREE.MeshPhongMaterial({color: 0xffffff}));
+        supportHand.position.set(0.10, -0.19, -0.48);
+        supportHand.rotation.x = -0.18;
+        supportHand.visible = false;
+        playerWeapon.add(supportHand);
+        playerHand.userData.basePosition = playerHand.position.clone();
+        supportHand.userData.basePosition = supportHand.position.clone();
         scene.add(playerWeapon);
 
         // Перестраиваем только модель оружия, сохраняя руку первого лица.
         function setFirstPersonWeapon(type, skinId = null) {
             playerWeapon.clear();
-            playerWeapon.add(createWeaponModel(type, skinId || equippedWeaponSkins[type] || null));
+            const firstPersonGun = createWeaponModel(type, skinId || equippedWeaponSkins[type] || null);
+            playerWeapon.add(firstPersonGun);
+            playerWeapon.userData.sniperBolt = firstPersonGun.userData.sniperBolt || null;
             playerWeapon.add(playerHand);
+            playerWeapon.add(supportHand);
+            supportHand.visible = type === 'sniper';
+            playerHand.position.copy(playerHand.userData.basePosition);
+            supportHand.position.copy(supportHand.userData.basePosition);
         }
 
         // Одна и та же модель оружия используется в третьем лице и у сетевых игроков.
@@ -2572,6 +2759,18 @@
         const mobileControls = document.getElementById('mobile-controls');
         const mobileToggle = document.getElementById('mobile-controls-toggle');
         const touchSensitivity = document.getElementById('touch-sensitivity');
+        const handCameraDistance = document.getElementById('hand-camera-distance');
+        const handDistanceValue = document.getElementById('hand-distance-value');
+        let handDistance = Number(localStorage.getItem('cg_hand_camera_distance') || 0.50);
+        if (!Number.isFinite(handDistance)) handDistance = 0.50;
+        handDistance = Math.max(0.20, Math.min(1.40, handDistance));
+        handCameraDistance.value = String(handDistance);
+        handDistanceValue.textContent = handDistance.toFixed(2);
+        handCameraDistance.addEventListener('input', () => {
+            handDistance = Number(handCameraDistance.value);
+            handDistanceValue.textContent = handDistance.toFixed(2);
+            localStorage.setItem('cg_hand_camera_distance', String(handDistance));
+        });
         const crosshairShape = document.getElementById('crosshair-shape');
         const crosshairEl = document.getElementById('crosshair');
         const savedCrosshair = localStorage.getItem('cg_crosshair_shape') || 'circle';
@@ -2582,7 +2781,7 @@
             localStorage.setItem('cg_crosshair_shape', crosshairShape.value);
         });
         const controlsEditor = document.getElementById('controls-editor');
-        const editableTouchControls = ['touch-stick','touch-fire','touch-jump','touch-reload','touch-inspect','touch-weapons','touch-emotions','touch-pause'].map(id => document.getElementById(id));
+        const editableTouchControls = ['touch-stick','touch-fire','touch-jump','touch-reload','touch-inspect','touch-weapons','touch-emotions','touch-pause','touch-scope'].map(id => document.getElementById(id));
         const controlsLayoutKey = 'cg_mobile_controls_layout_v1';
         function applyTouchControlLayout() {
             let layout = {}; try { layout = JSON.parse(localStorage.getItem(controlsLayoutKey) || '{}') || {}; } catch (_) {}
@@ -2786,6 +2985,7 @@
             if (health > 0 && chatInput.style.display !== 'block' && weaponMenu.style.display !== 'block' && 
                 document.getElementById('spawn-modal').style.display !== 'flex' && 
                 (!emModal || emModal.style.display !== 'flex')) {
+                closeSniperScope(); updateScopeButton();
                 document.getElementById('pause-menu').style.display = 'flex';
                 ui.style.display = 'none';
                 crosshair.style.display = 'none';
@@ -3456,7 +3656,7 @@
                 new THREE.MeshBasicMaterial({color: isRocket ? 0xff4400 : 0xffff00})
             );
             bullet.position.copy(fromPos).add(targetDir.clone().multiplyScalar(isRocket ? 0.9 : 0));
-            const speed = isEnemy ? 0.6 : (currentWeapon === 'rifle' ? 2.8 : (isRocket ? 1.1 : 1.6));
+            const speed = isEnemy ? 0.6 : (currentWeapon === 'sniper' ? 5.2 : (currentWeapon === 'rifle' ? 2.8 : (isRocket ? 1.1 : 1.6)));
             bullet.userData.velocity = targetDir.clone().multiplyScalar(speed);
             bullet.userData.isEnemy = isEnemy;
             bullet.userData.isRocket = isRocket;
@@ -3613,6 +3813,7 @@ shopChicken.userData.rightLeg.rotation.x = 0;
             const delta = clock.getDelta();
 
             if (!isPlaying) {
+                            closeSniperScope(); updateScopeButton();
                             menuChicken.rotation.y += 0.02;
                             const t = Date.now() * 0.008;
                 menuChicken.userData.leftLeg.rotation.x = 0;
@@ -3624,6 +3825,7 @@ shopChicken.userData.rightLeg.rotation.x = 0;
                 if (playerModel) playerModel.visible = false;
                 menuChicken.visible = true;
             } else {
+                updateScopeButton();
                 playerWeapon.visible = cameraMode === 0;
                 
                 // Модель игрока теперь видна всегда (чтобы видеть ноги), но в 1-м лице прячем голову
@@ -3671,7 +3873,7 @@ shopChicken.userData.rightLeg.rotation.x = 0;
 
                 playerWeapon.position.copy(camera.position);
                 playerWeapon.rotation.copy(camera.rotation);
-                playerWeapon.translateZ(-0.5); playerWeapon.translateX(0.6); playerWeapon.translateY(-0.32);
+                playerWeapon.translateZ(-handDistance); playerWeapon.translateX(0.6); playerWeapon.translateY(-0.32);
                 // Небольшие процедурные анимации от первого лица.
                 const weaponNow = performance.now();
                 if (playerWeapon.userData.slashUntil > weaponNow) {
@@ -3709,9 +3911,40 @@ shopChicken.userData.rightLeg.rotation.x = 0;
                     const wave = Math.sin(rp*Math.PI);
                     playerWeapon.position.y -= wave*0.13;
                     playerWeapon.rotation.x += wave*0.22;
-                    playerHand.rotation.x = wave*0.75;
-                    if (rp >= 1) { playerWeapon.userData.reloadStarted = 0; playerHand.rotation.x = 0; }
-                } else playerHand.rotation.x = 0;
+                    playerHand.rotation.x = wave*0.35;
+                    if (currentWeapon === 'sniper' && playerWeapon.userData.sniperBolt) {
+                        const bolt = playerWeapon.userData.sniperBolt;
+                        // Быстрый цикл: рука тянется к затвору, отводит его назад,
+                        // поднимает рукоять и возвращает затвор вперёд.
+                        const reach = Math.min(1, rp / 0.16);
+                        const pull = rp < 0.34 ? rp / 0.34 : (rp < 0.52 ? 1 : (rp < 0.78 ? 1 - (rp - 0.52) / 0.26 : 0));
+                        const lift = rp < 0.34 ? Math.min(1, rp / 0.24) : (rp < 0.52 ? 1 : Math.max(0, 1 - (rp - 0.52) / 0.20));
+                        playerHand.position.set(
+                            playerHand.userData.basePosition.x + reach * 0.20,
+                            playerHand.userData.basePosition.y + reach * 0.08,
+                            playerHand.userData.basePosition.z - reach * 0.24
+                        );
+                        playerHand.rotation.set(-0.35 * reach + 0.2 * pull, 0.18 * reach, -0.45 * reach);
+                        supportHand.visible = true;
+                        supportHand.position.copy(supportHand.userData.basePosition);
+                        supportHand.rotation.set(-0.18 + wave * 0.06, 0, 0.08);
+                        bolt.position.x = pull * 0.22;
+                        bolt.rotation.y = lift * 0.45;
+                    }
+                    if (rp >= 1) {
+                        playerWeapon.userData.reloadStarted = 0;
+                        playerHand.position.copy(playerHand.userData.basePosition);
+                        playerHand.rotation.set(0,0,0);
+                        supportHand.position.copy(supportHand.userData.basePosition);
+                        supportHand.rotation.set(-0.18,0,0.08);
+                        if(playerWeapon.userData.sniperBolt){playerWeapon.userData.sniperBolt.position.x=0;playerWeapon.userData.sniperBolt.rotation.y=0;}
+                    }
+                } else {
+                    playerHand.position.copy(playerHand.userData.basePosition);
+                    playerHand.rotation.set(0,0,0);
+                    supportHand.position.copy(supportHand.userData.basePosition);
+                    supportHand.rotation.set(-0.18,0,0.08);
+                }
                 if (playerWeapon.userData.inspectUntil > weaponNow) {
                     const ip = (weaponNow-playerWeapon.userData.inspectStarted)/(playerWeapon.userData.inspectUntil-playerWeapon.userData.inspectStarted);
                     const wave = Math.sin(ip*Math.PI);
@@ -3986,7 +4219,7 @@ shopChicken.userData.rightLeg.rotation.x = 0;
                                 targetHPRef.transaction((current) => {
                                     let oldVal = (typeof current === 'object') ? (current.val ?? 100) : (current ?? 100);
                                     if (oldVal <= 0) return;
-                                    const dmg = currentWeapon === 'ak47' ? 25 : 20;
+                                    const dmg = currentWeapon === 'sniper' ? 100 : (currentWeapon === 'ak47' ? 25 : 20);
                                     return { val: Math.max(0, oldVal - dmg), by: nickInput.value || 'Player' };
                                 }, (error, committed, snapshot) => {
                                     if (committed) {
