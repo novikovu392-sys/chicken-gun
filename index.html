@@ -678,7 +678,7 @@
                         <div class="case-drops" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:7px">
                             <div>🔫 Пистолет · 32%</div><div>🔥 Автомат · 22%</div><div>🔪 Нож · 14%</div>
                             <div>🔫 AK-47 · 10%</div><div>✨ Золотой пистолет · 7%</div><div>🚀 Гранатомёт · 3%</div>
-                            <div>🦋 Бабочка · 4%</div><div>🔪 M9 Bayonet · 4%</div><div>🔫 USP · 4%</div><div>🎯 Снайперская винтовка · 2%</div>
+                            <div>🗡️ Stiletto · 3%</div><div>🦋 Бабочка · 4%</div><div>🔪 M9 Bayonet · 4%</div><div>🔫 USP · 4%</div><div>🎯 Снайперская винтовка · 2%</div>
                         </div>
                     </div>
                     <div id="weapon-tab-market" class="weapon-subpage" style="display:none">
@@ -1177,7 +1177,7 @@
         let teamPoints = 0;
         let enemyPoints = 0;
         let coins = parseInt(localStorage.getItem('cg_coins')) || 0;
-        const validWeaponIds = ['pistol','usp','gold_pistol','rifle','sniper','knife','butterfly_knife','m9_bayonet','ak47','bazooka'];
+        const validWeaponIds = ['pistol','usp','gold_pistol','rifle','sniper','knife','stiletto','butterfly_knife','m9_bayonet','karambit','ak47','bazooka'];
         let ownedWeapons;
         try {
             const savedWeapons = JSON.parse(localStorage.getItem('cg_weapons') || '["pistol"]');
@@ -1185,7 +1185,7 @@
         } catch (_) { ownedWeapons = ['pistol']; }
         if (!ownedWeapons.includes('pistol')) ownedWeapons.unshift('pistol');
         // Новые ножи доступны в инвентаре сразу.
-        ['butterfly_knife','m9_bayonet'].forEach(id => { if (!ownedWeapons.includes(id)) ownedWeapons.push(id); });
+        ['stiletto','butterfly_knife','m9_bayonet','karambit'].forEach(id => { if (!ownedWeapons.includes(id)) ownedWeapons.push(id); });
         localStorage.setItem('cg_weapons', JSON.stringify(ownedWeapons));
         let ownedWeaponSkins = []; localStorage.removeItem('cg_weapon_skins');
         let equippedWeaponSkins = {}; localStorage.removeItem('cg_equipped_weapon_skins');
@@ -1201,7 +1201,7 @@
         let currentBoot = localStorage.getItem('cg_current_boot') || 'none';
         let currentBackpack = localStorage.getItem('cg_current_backpack') || 'none';
         let currentWeapon = localStorage.getItem('cg_current_weapon') || 'pistol';
-        if (!['pistol','usp','gold_pistol','rifle','sniper','knife','butterfly_knife','m9_bayonet','ak47','bazooka'].includes(currentWeapon) ||
+        if (!['pistol','usp','gold_pistol','rifle','sniper','knife','stiletto','butterfly_knife','m9_bayonet','karambit','ak47','bazooka'].includes(currentWeapon) ||
             (currentWeapon !== 'pistol' && !ownedWeapons.includes(currentWeapon))) {
             currentWeapon = 'pistol';
             localStorage.setItem('cg_current_weapon', currentWeapon);
@@ -1451,14 +1451,14 @@
             if (tab === 'weapons') window.switchWeaponTab('inventory');
         };
 
-        const weaponNames = { pistol:'Пистолет', usp:'USP', gold_pistol:'Золотой пистолет', rifle:'Автомат', sniper:'Снайперская винтовка', knife:'Нож', butterfly_knife:'Нож-бабочка', m9_bayonet:'M9 Bayonet', ak47:'AK-47', bazooka:'Гранатомёт' };
-        const weaponIcons = { pistol:'🔫', usp:'🔫', gold_pistol:'✨', rifle:'🔥', sniper:'🎯', knife:'🔪', butterfly_knife:'🦋', m9_bayonet:'🔪', ak47:'🔫', bazooka:'🚀' };
+        const weaponNames = { pistol:'Пистолет', usp:'USP', gold_pistol:'Золотой пистолет', rifle:'Автомат', sniper:'Снайперская винтовка', knife:'Нож', stiletto:'Складной Stiletto', butterfly_knife:'Нож-бабочка', m9_bayonet:'M9 Bayonet', karambit:'Керамбит', ak47:'AK-47', bazooka:'Гранатомёт' };
+        const weaponIcons = { pistol:'🔫', usp:'🔫', gold_pistol:'✨', rifle:'🔥', sniper:'🎯', knife:'🔪', stiletto:'🗡️', butterfly_knife:'🦋', m9_bayonet:'🔪', karambit:'🌀', ak47:'🔫', bazooka:'🚀' };
         // Редкость и шансы выпадения из оружейного кейса (в сумме 100%).
         const weaponRarity = {
-            pistol:{name:'Обычное',color:'#b8bec7',chance:30}, rifle:{name:'Необычное',color:'#55c878',chance:22}, sniper:{name:'Эпическое',color:'#b27aff',chance:2},
-            knife:{name:'Редкое',color:'#48a9ff',chance:14}, ak47:{name:'Эпическое',color:'#b27aff',chance:10},
+            pistol:{name:'Обычное',color:'#b8bec7',chance:27}, rifle:{name:'Необычное',color:'#55c878',chance:22}, sniper:{name:'Эпическое',color:'#b27aff',chance:2},
+            knife:{name:'Редкое',color:'#48a9ff',chance:14}, stiletto:{name:'Легендарное',color:'#ffb52e',chance:3}, ak47:{name:'Эпическое',color:'#b27aff',chance:10},
             gold_pistol:{name:'Легендарное',color:'#ffb52e',chance:7}, bazooka:{name:'Мифическое',color:'#ff5964',chance:3},
-            butterfly_knife:{name:'Легендарное',color:'#ffb52e',chance:4}, m9_bayonet:{name:'Легендарное',color:'#ffb52e',chance:4},
+            butterfly_knife:{name:'Легендарное',color:'#ffb52e',chance:4}, m9_bayonet:{name:'Легендарное',color:'#ffb52e',chance:4}, karambit:{name:'Легендарное',color:'#ffb52e',chance:4},
             usp:{name:'Эпическое',color:'#b27aff',chance:4}
         };
         const rarityOf = id => weaponRarity[id] || {name:'Неизвестно',color:'#b8bec7',chance:0};
@@ -1471,8 +1471,72 @@
             let shape = '';
             if (type === 'usp') {
                 shape = `<path d="M2 22 L49 22 L49 18 L82 18 L89 22 L89 30 L82 35 L55 35 L51 48 L37 48 L34 36 L15 35 L2 32 Z" fill="#171b1a" stroke="#89938d" stroke-width="1.7"/><path d="M2 20 L49 20 L49 30 L2 30 Z" fill="#101312" stroke="#69736d" stroke-width="1.2"/><path d="M52 19 L83 19 L89 22 L89 28 L52 28 Z" fill="#363c39"/><path d="M55 36 L69 36 L67 55 L53 55 L49 48 Z" fill="#171a19" stroke="#69736d" stroke-width="1.4"/><path d="M54 40 L66 40 M53 44 L65 44 M52 48 L64 48" stroke="#343a37" stroke-width="1.4"/><path d="M37 36 L49 36 L47 46 L39 46 Z" fill="none" stroke="#a0aaa3" stroke-width="2"/><path d="M42 36 L44 43 L48 43" fill="none" stroke="#a0aaa3" stroke-width="1.5"/><path d="M16 35 L31 35 L32 51 L17 51 Z" fill="#111514" stroke="#5b655f" stroke-width="1.2"/><path d="M18 51 L32 51 L34 55 L17 55 Z" fill="#242a27" stroke="#69736d" stroke-width="1"/>`;
+            } else if (type === 'stiletto') {
+                shape = `<path d="M47 29 L88 17 L99 22 L57 36 L47 36 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M49 32 L85 22" stroke="#fff" stroke-opacity=".7" stroke-width="1.5"/><path d="M43 32 L22 24 L12 30 L36 40 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><path d="M38 31 L48 31 L51 39 L40 42 Z" fill="#68736b" stroke="#c4cbc6" stroke-width="1.5"/><circle cx="43" cy="35" r="2.5" fill="#d7dfdc"/>`;
             } else if (type === 'butterfly_knife') {
                 shape = `<path d="M47 30 L82 9 L94 13 L58 35 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M47 34 L15 13 L5 18 L39 42 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M43 34 L19 53 L28 59 L51 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><path d="M53 34 L78 53 L69 59 L45 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><circle cx="47" cy="36" r="4" fill="#c5ccd0"/>`;
+            } else if (type === 'karambit') {
+                // Керамбит по референсу: широкий серповидный клинок, рифлёная рукоять и кольцо.
+                const spinPivot = new THREE.Group();
+                const steel = new THREE.MeshPhongMaterial({color:0xbfc5c9, shininess:115, specular:0xffffff});
+                const edgeSteel = new THREE.MeshPhongMaterial({color:0x858d92, shininess:90});
+                const dark = new THREE.MeshPhongMaterial({color:0x292b2d, shininess:55});
+                const accent = new THREE.MeshPhongMaterial({color:0x55595c, shininess:70});
+
+                // Широкое изогнутое лезвие-серп. Рисуем в XY и разворачиваем вдоль оси оружия.
+                const bladeShape = new THREE.Shape();
+                bladeShape.moveTo(0.10, 0.045);
+                bladeShape.bezierCurveTo(-0.02, 0.16, -0.28, 0.34, -0.62, 0.31);
+                bladeShape.bezierCurveTo(-0.77, 0.30, -0.91, 0.20, -0.99, 0.08);
+                bladeShape.bezierCurveTo(-0.82, 0.17, -0.68, 0.19, -0.52, 0.17);
+                bladeShape.bezierCurveTo(-0.29, 0.13, -0.12, -0.005, 0.015, -0.035);
+                bladeShape.lineTo(0.10, 0.045);
+                const bladeGeo = new THREE.ExtrudeGeometry(bladeShape,{depth:0.035,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:0.012,bevelThickness:0.012});
+                const blade = new THREE.Mesh(bladeGeo,steel);
+                blade.rotation.y = Math.PI/2;
+                blade.position.z = -0.02;
+                spinPivot.add(blade);
+                // Тонкая тёмная линия вдоль внутренней кромки подчёркивает форму серпа.
+                const edgeCurve = new THREE.CatmullRomCurve3([
+                    new THREE.Vector3(0,0.12,-0.52), new THREE.Vector3(0,0.14,-0.35),
+                    new THREE.Vector3(0,0.08,-0.18), new THREE.Vector3(0,0.015,-0.06)
+                ]);
+                spinPivot.add(new THREE.Mesh(new THREE.TubeGeometry(edgeCurve,18,0.008,6,false),edgeSteel));
+
+                // Эргономичная рукоять с характерными выемками для пальцев.
+                const gripShape = new THREE.Shape();
+                gripShape.moveTo(-0.015,-0.065);
+                gripShape.bezierCurveTo(0.08,-0.09,0.12,-0.055,0.17,-0.065);
+                gripShape.bezierCurveTo(0.22,-0.078,0.25,-0.095,0.30,-0.075);
+                gripShape.bezierCurveTo(0.37,-0.05,0.43,-0.07,0.49,-0.045);
+                gripShape.lineTo(0.51,0.045);
+                gripShape.bezierCurveTo(0.43,0.07,0.37,0.05,0.31,0.075);
+                gripShape.bezierCurveTo(0.25,0.095,0.22,0.078,0.17,0.065);
+                gripShape.bezierCurveTo(0.12,0.055,0.08,0.09,-0.015,0.065);
+                gripShape.closePath();
+                const grip = new THREE.Mesh(new THREE.ExtrudeGeometry(gripShape,{depth:0.075,bevelEnabled:true,bevelSegments:2,bevelSize:0.012,bevelThickness:0.012}),dark);
+                grip.position.z = 0.02;
+                spinPivot.add(grip);
+                // Три металлические насечки на рукояти.
+                [0.12,0.23,0.34].forEach((x)=>{
+                    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.018,0.145,0.012),accent);
+                    groove.position.set(x,0,0.108); groove.rotation.z=-0.12; spinPivot.add(groove);
+                });
+                // Кольцо на торце рукояти.
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.092,0.024,10,28),dark);
+                ring.position.set(0.57,0,0.055); spinPivot.add(ring);
+                const ringRim = new THREE.Mesh(new THREE.TorusGeometry(0.092,0.008,8,28),accent);
+                ringRim.position.set(0.57,0,0.08); spinPivot.add(ringRim);
+                const tang = new THREE.Mesh(new THREE.BoxGeometry(0.14,0.075,0.065),dark);
+                tang.position.set(0.48,0,0.035); spinPivot.add(tang);
+
+                // Поворот всей модели вдоль направления взгляда, как у остальных ножей.
+                const model = new THREE.Group();
+                model.rotation.y = Math.PI/2;
+                model.add(spinPivot);
+                gun.add(model);
+                gun.userData.karambitSpinPivot = spinPivot;
+                gun.userData.karambitModel = model;
             } else if (type === 'm9_bayonet') {
                 shape = `<path d="M8 28 L76 19 L96 30 L76 40 L8 34 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M9 29 L30 29 L30 39 L9 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><path d="M29 29 L29 39" stroke="#c4cbc6" stroke-width="2"/>`;
             } else if (type === 'knife') {
@@ -1684,7 +1748,7 @@
             const root = document.getElementById('weapon-market-list');
             if (!root) return;
             root.innerHTML = '';
-            const catalog = ['pistol','usp','rifle','sniper','knife','butterfly_knife','m9_bayonet','ak47','gold_pistol','bazooka'];
+            const catalog = ['pistol','usp','rifle','sniper','knife','stiletto','butterfly_knife','m9_bayonet','karambit','ak47','gold_pistol','bazooka'];
             catalog.forEach(id => {
                 const offers = marketItems.filter(item => item && item.weapon === id && item.kind !== 'skin' && !item.skin)
                     .slice().sort((a,b) => Number(a.price)-Number(b.price));
@@ -2125,7 +2189,7 @@
         }
 
         function startReload() {
-            if (['knife','butterfly_knife','m9_bayonet'].includes(currentWeapon) || isReloading || ammo >= maxAmmo) return;
+            if (['knife','stiletto','butterfly_knife','m9_bayonet','karambit'].includes(currentWeapon) || isReloading || ammo >= maxAmmo) return;
             playerWeapon.userData.reloadStarted = performance.now();
             playerWeapon.userData.reloadDuration = currentWeapon === 'sniper' ? 1250 : (currentWeapon === 'bazooka' ? 2500 : 1500);
             playerWeapon.userData.networkAction = 'reload';
@@ -2403,6 +2467,21 @@
                 rearSight.position.set(0,0.215,0.30); gun.add(rearSight);
                 const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.055,0.045,0.055), black);
                 frontSight.position.set(0,0.22,-0.30); gun.add(frontSight);
+            } else if (type === 'stiletto') {
+                // Складной стилето: узкая стальная клинковая часть на шарнире и рукоять с накладками.
+                const steel = new THREE.MeshPhongMaterial({color:0xd9e1e6, shininess:110, specular:0xffffff});
+                const dark = new THREE.MeshPhongMaterial({color:0x202820, shininess:35});
+                const accent = new THREE.MeshPhongMaterial({color:0x9b8657, shininess:65});
+                const handle = new THREE.Mesh(new THREE.BoxGeometry(0.13,0.12,0.62),dark); handle.position.set(0,0,0.29); gun.add(handle);
+                const scale = new THREE.Mesh(new THREE.BoxGeometry(0.018,0.125,0.50),accent); scale.position.set(0.071,0,0.29); gun.add(scale);
+                const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.075,12,8),dark); pommel.scale.set(1,0.8,0.55); pommel.position.z=0.61; gun.add(pommel);
+                const pivot = new THREE.Group(); pivot.position.set(0,0,-0.025); gun.add(pivot);
+                // Клинок по длине рукояти: при повороте на 180° целиком уходит внутрь неё.
+                const blade = new THREE.Mesh(new THREE.BoxGeometry(0.045,0.055,0.48),steel); blade.position.z=-0.24; pivot.add(blade);
+                const tip = new THREE.Mesh(new THREE.ConeGeometry(0.028,0.14,4),steel); tip.rotation.x=-Math.PI/2; tip.position.z=-0.52; pivot.add(tip);
+                const spine = new THREE.Mesh(new THREE.BoxGeometry(0.012,0.012,0.33),accent); spine.position.set(0,0.033,-0.23); pivot.add(spine);
+                const pivotPin = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.025,16),accent); pivotPin.rotation.z=Math.PI/2; pivotPin.position.set(0,0,0); gun.add(pivotPin);
+                gun.userData.isStiletto = true; gun.userData.stilettoBlade = pivot;
             } else if (type === 'butterfly_knife') {
                 const steel = new THREE.MeshPhongMaterial({color:0xcbd5dc, shininess:100, specular:0xffffff});
                 const dark = new THREE.MeshPhongMaterial({color:0x252b30});
@@ -2416,12 +2495,27 @@
                 [-1,1].forEach((side)=>{const pivot=new THREE.Group();pivot.position.set(side*0.055,0,-0.02);const h=new THREE.Mesh(new THREE.BoxGeometry(0.055,0.075,0.38),dark);h.position.z=0.12;pivot.add(h);pivot.rotation.x=side*0.12;pivot.userData.side=side;pivot.userData.restX=side*0.12;gun.add(pivot);handles.push(pivot);});
                 gun.userData.isButterfly = true;
                 gun.userData.butterflyHandles = handles;
+            } else if (type === 'karambit') {
+                const spinPivot = new THREE.Group();
+                const steel = new THREE.MeshPhongMaterial({color:0xd5dce0, shininess:105, specular:0xffffff});
+                const dark = new THREE.MeshPhongMaterial({color:0x252a25, shininess:45});
+                // Крюкообразный клинок из плавной дуги.
+                const pts = [new THREE.Vector3(0,0,-0.05), new THREE.Vector3(0,0.10,-0.30), new THREE.Vector3(0,0.20,-0.52), new THREE.Vector3(0,0.16,-0.72), new THREE.Vector3(0,0.02,-0.78)];
+                const curve = new THREE.CatmullRomCurve3(pts);
+                const blade = new THREE.Mesh(new THREE.TubeGeometry(curve,28,0.035,8,false),steel); spinPivot.add(blade);
+                const handle = new THREE.Mesh(new THREE.BoxGeometry(0.10,0.085,0.34),dark); handle.position.z=0.19; spinPivot.add(handle);
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.085,0.022,8,20),dark); ring.position.set(0,0,0.42); spinPivot.add(ring);
+                const guard = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.045,0.06),dark); guard.position.z=0.015; spinPivot.add(guard);
+                gun.add(spinPivot); gun.userData.karambitSpinPivot = spinPivot;
             } else if (type === 'm9_bayonet') {
+                const spinPivot = new THREE.Group();
                 const steel = new THREE.MeshPhongMaterial({color:0xd4d9dc, shininess:90});
-                const blade = new THREE.Mesh(new THREE.BoxGeometry(0.075,0.055,0.78),steel); blade.position.z=-0.34; gun.add(blade);
-                const tip = new THREE.Mesh(new THREE.ConeGeometry(0.052,0.18,4),steel); tip.rotation.x=-Math.PI/2; tip.position.z=-0.82; gun.add(tip);
-                const guard = new THREE.Mesh(new THREE.BoxGeometry(0.22,0.07,0.08),new THREE.MeshPhongMaterial({color:0x333333})); gun.add(guard);
-                const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.06,0.3,8),new THREE.MeshPhongMaterial({color:0x292d25})); grip.rotation.x=Math.PI/2; grip.position.z=0.2; gun.add(grip);
+                const blade = new THREE.Mesh(new THREE.BoxGeometry(0.075,0.055,0.78),steel); blade.position.z=-0.34; spinPivot.add(blade);
+                const tip = new THREE.Mesh(new THREE.ConeGeometry(0.052,0.18,4),steel); tip.rotation.x=-Math.PI/2; tip.position.z=-0.82; spinPivot.add(tip);
+                const guard = new THREE.Mesh(new THREE.BoxGeometry(0.22,0.07,0.08),new THREE.MeshPhongMaterial({color:0x333333})); spinPivot.add(guard);
+                const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.06,0.3,8),new THREE.MeshPhongMaterial({color:0x292d25})); grip.rotation.x=Math.PI/2; grip.position.z=0.2; spinPivot.add(grip);
+                gun.add(spinPivot);
+                gun.userData.m9SpinPivot = spinPivot;
             } else if (type === 'knife') {
                 const b = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, 0.6), new THREE.MeshPhongMaterial({color: 0xcccccc}));
                 const h = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.25), new THREE.MeshPhongMaterial({color: 0x442200}));
@@ -2840,6 +2934,9 @@
             const firstPersonGun = createWeaponModel(type, skinId || equippedWeaponSkins[type] || null);
             playerWeapon.add(firstPersonGun);
             playerWeapon.userData.sniperBolt = firstPersonGun.userData.sniperBolt || null;
+            // Передаём pivot M9 на уровень playerWeapon: именно его читает цикл осмотра.
+            playerWeapon.userData.m9SpinPivot = firstPersonGun.userData.m9SpinPivot || null;
+            playerWeapon.userData.karambitSpinPivot = firstPersonGun.userData.karambitSpinPivot || null;
             playerWeapon.add(playerHand);
             playerWeapon.add(supportHand);
             supportHand.visible = type === 'sniper';
@@ -3060,7 +3157,7 @@
         const lookEnd=e=>{if(e.pointerId===touchLookId)touchLookId=null;};
         document.addEventListener('pointerup',lookEnd);
         document.addEventListener('pointercancel',lookEnd);
-        document.getElementById('touch-fire').addEventListener('pointerdown',e=>{e.preventDefault(); if(!isPlaying)return; if(!['knife','butterfly_knife','m9_bayonet'].includes(currentWeapon) && (ammo<=0||isReloading))return; if(currentWeapon==='rifle') isShooting=true; else {const d=new THREE.Vector3();camera.getWorldDirection(d);shoot(camera.position,d);} });
+        document.getElementById('touch-fire').addEventListener('pointerdown',e=>{e.preventDefault(); if(!isPlaying)return; if(!['knife','stiletto','butterfly_knife','m9_bayonet','karambit'].includes(currentWeapon) && (ammo<=0||isReloading))return; if(currentWeapon==='rifle') isShooting=true; else {const d=new THREE.Vector3();camera.getWorldDirection(d);shoot(camera.position,d);} });
         document.getElementById('touch-fire').addEventListener('pointerup',()=>isShooting=false);
         document.getElementById('touch-fire').addEventListener('pointercancel',()=>isShooting=false);
         document.getElementById('touch-jump').addEventListener('pointerdown',e=>{e.preventDefault(); if(canJump){velocity.y+=20;canJump=false;}});
@@ -3069,7 +3166,7 @@
             if (!isPlaying || playerWeapon.userData.inspectUntil > performance.now()) return;
             playerWeapon.userData.inspectStarted = performance.now();
             playerHand.userData.baseY = playerHand.position.y;
-            playerWeapon.userData.inspectUntil = performance.now() + (currentWeapon === 'butterfly_knife' ? 1650 : 1200);
+            playerWeapon.userData.inspectUntil = performance.now() + (currentWeapon === 'butterfly_knife' ? 1650 : (currentWeapon === 'stiletto' ? 1400 : (currentWeapon === 'm9_bayonet' || currentWeapon === 'karambit' ? 1200 : 1200)));
             playerWeapon.userData.inspectType = currentWeapon;
             playerWeapon.userData.inspectVariant = currentWeapon === 'butterfly_knife' ? (Math.random() < 0.5 ? 'flip' : 'toss') : 'flip';
             // Во второй анимации отделяем только модель ножа от руки.
@@ -3441,7 +3538,7 @@
                     }
                 }
             } else if (e.button === 0) {
-                if (currentWeapon !== 'knife') {
+                if (!['knife','stiletto','butterfly_knife','m9_bayonet','karambit'].includes(currentWeapon)) {
                     if (ammo <= 0) {
                         addChatMessage("Нажми R для перезарядки!", "kill");
                         return;
@@ -3908,7 +4005,7 @@
 
         function shoot(fromPos, targetDir, isEnemy = false, shooterName = "") {
             if (!isEnemy) {
-                if (['knife','butterfly_knife','m9_bayonet'].includes(currentWeapon)) {
+                if (['knife','stiletto','butterfly_knife','m9_bayonet','karambit'].includes(currentWeapon)) {
                     meleeAttack();
                     return;
                 }
@@ -4231,8 +4328,8 @@ shopChicken.userData.rightLeg.rotation.x = 0;
                         playerWeapon.rotation.z += wave*0.32;
                         playerWeapon.rotation.x += wave*0.18;
                     }
+                    const smooth = t => { t=Math.max(0,Math.min(1,t)); return t*t*(3-2*t); };
                     if (playerWeapon.userData.inspectType === 'butterfly_knife') {
-                        const smooth = t => { t=Math.max(0,Math.min(1,t)); return t*t*(3-2*t); };
                         const right = (playerWeapon.userData.butterflyHandles||[]).find(h => h.userData.side === 1);
                         const left = (playerWeapon.userData.butterflyHandles||[]).find(h => h.userData.side === -1);
                         if (playerWeapon.userData.inspectVariant === 'toss') {
@@ -4283,7 +4380,33 @@ shopChicken.userData.rightLeg.rotation.x = 0;
                             playerWeapon.rotation.x += Math.sin(rollPhase*Math.PI)*0.46;
                             playerWeapon.position.y += Math.sin(rollPhase*Math.PI)*0.13;
                         }
-                    } else if (['knife','m9_bayonet'].includes(playerWeapon.userData.inspectType)) {
+                    } else if (playerWeapon.userData.inspectType === 'stiletto') {
+                        const stiletto = playerWeapon.children.find(ch => ch.userData && ch.userData.isStiletto);
+                        if (stiletto && stiletto.userData.stilettoBlade) {
+                            // Складной механизм: клинок разворачивается на 180° и полностью заходит в рукоять.
+                            const close = smooth(ip / 0.38);
+                            const open = smooth((ip - 0.62) / 0.38);
+                            const fold = Math.PI * close * (1 - open);
+                            stiletto.userData.stilettoBlade.rotation.y = fold;
+                        }
+                        playerWeapon.rotation.y += Math.sin(ip*Math.PI*2)*0.32;
+                    } else if (playerWeapon.userData.inspectType === 'm9_bayonet') {
+                        // M9 делает один полный оборот вокруг ладони.
+                        const m9Pivot = playerWeapon.userData.m9SpinPivot;
+                        if (m9Pivot) {
+                            // Вращение вокруг поперечной оси (Y), проходящей через
+                            // центр хвата: нож обходит ладонь, а не крутится вдоль клинка.
+                            m9Pivot.rotation.set(0, ip * Math.PI * 2, 0);
+                        }
+                        playerHand.rotation.x = -0.10 + Math.sin(ip*Math.PI)*0.08;
+                        playerWeapon.position.y += Math.sin(ip*Math.PI)*0.035;
+                    } else if (playerWeapon.userData.inspectType === 'karambit') {
+                        // Керамбит делает один оборот в вертикальной плоскости — на 90° к движению M9.
+                        const pivot = playerWeapon.userData.karambitSpinPivot;
+                        if (pivot) pivot.rotation.set(ip * Math.PI * 2, 0, 0);
+                        playerHand.rotation.z = Math.sin(ip*Math.PI)*0.08;
+                        playerWeapon.position.y += Math.sin(ip*Math.PI)*0.025;
+                    } else if (playerWeapon.userData.inspectType === 'knife') {
                         playerWeapon.rotation.y += Math.sin(ip*Math.PI*2)*0.55;
                     } else {
                         playerWeapon.rotation.y += Math.sin(ip*Math.PI*2)*0.28;
@@ -4308,6 +4431,12 @@ shopChicken.userData.rightLeg.rotation.x = 0;
                     playerWeapon.userData.butterflyHandles.forEach(handle => {
                         handle.rotation.set(handle.userData.restX||0, 0, 0);
                     });
+                    }
+                    if (playerWeapon.userData.m9SpinPivot) playerWeapon.userData.m9SpinPivot.rotation.set(0,0,0);
+                    if (playerWeapon.userData.karambitSpinPivot) playerWeapon.userData.karambitSpinPivot.rotation.set(0,0,0);
+                    const stilettoModel = playerWeapon.children.find(ch => ch.userData && ch.userData.isStiletto);
+                    if (stilettoModel && stilettoModel.userData.stilettoBlade) {
+                        stilettoModel.userData.stilettoBlade.rotation.set(0,0,0);
                     }
                 }
 
