@@ -158,18 +158,44 @@
         }
 
         #weapon-menu {
-            position: absolute;
+            position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.96);
             border: 2px solid #ffde00;
             padding: 20px;
             border-radius: 10px;
             display: none;
-            z-index: 400;
+            z-index: 10000;
             color: white;
-            min-width: 200px;
+            min-width: 240px;
+            max-width: min(92vw, 360px);
+            max-height: 75vh;
+            overflow-y: auto;
+            pointer-events: auto;
+            touch-action: pan-y;
+            box-sizing: border-box;
+        }
+        #weapon-list { pointer-events: auto; }
+        #weapon-list .weapon-slot {
+            display: block;
+            width: 100%;
+            min-height: 48px;
+            background: rgba(35,40,35,.98);
+            color: #fff;
+            border: 1px solid #777;
+            border-radius: 7px;
+            cursor: pointer;
+            pointer-events: auto;
+            touch-action: manipulation;
+            position: relative;
+            z-index: 10001;
+        }
+        #weapon-list .weapon-slot.active {
+            border: 2px solid #ffde00;
+            background: rgba(110,95,0,.45);
+            color: #ffed91;
         }
 
         .weapon-slot {
@@ -251,7 +277,48 @@
             z-index: 500;
         }
 
-        #death-screen { background: rgba(139, 0, 0, 0.8); }
+        /* Death overlay must cover the complete mobile viewport, not half of the game canvas. */
+        #death-screen {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            min-width: 100vw;
+            min-height: 100vh;
+            box-sizing: border-box;
+            padding: 24px;
+            background: rgba(105, 0, 0, 0.82);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            pointer-events: auto;
+            z-index: 20000;
+            overflow: auto;
+        }
+        #death-screen h1 {
+            font-size: clamp(30px, 8vw, 50px) !important;
+            line-height: 1.1;
+            margin: 0 0 14px !important;
+            text-shadow: 0 3px 8px rgba(0,0,0,.55);
+        }
+        #death-screen > div {
+            font-size: clamp(16px, 4.2vw, 24px) !important;
+            margin: 0 0 26px !important;
+        }
+        #continue-btn {
+            position: relative;
+            z-index: 20001;
+            pointer-events: auto;
+            touch-action: manipulation;
+            min-width: min(250px, 80vw);
+            padding: 14px 28px;
+            font-size: clamp(18px, 5vw, 26px);
+        }
         #pause-menu { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); }
 
         #chat {
@@ -1110,7 +1177,13 @@
         let teamPoints = 0;
         let enemyPoints = 0;
         let coins = parseInt(localStorage.getItem('cg_coins')) || 0;
-        let ownedWeapons = JSON.parse(localStorage.getItem('cg_weapons')) || ['pistol'];
+        const validWeaponIds = ['pistol','usp','gold_pistol','rifle','sniper','knife','butterfly_knife','m9_bayonet','ak47','bazooka'];
+        let ownedWeapons;
+        try {
+            const savedWeapons = JSON.parse(localStorage.getItem('cg_weapons') || '["pistol"]');
+            ownedWeapons = Array.isArray(savedWeapons) ? [...new Set(savedWeapons.filter(id => validWeaponIds.includes(id)))] : ['pistol'];
+        } catch (_) { ownedWeapons = ['pistol']; }
+        if (!ownedWeapons.includes('pistol')) ownedWeapons.unshift('pistol');
         // Новые ножи доступны в инвентаре сразу.
         ['butterfly_knife','m9_bayonet'].forEach(id => { if (!ownedWeapons.includes(id)) ownedWeapons.push(id); });
         localStorage.setItem('cg_weapons', JSON.stringify(ownedWeapons));
@@ -1128,6 +1201,11 @@
         let currentBoot = localStorage.getItem('cg_current_boot') || 'none';
         let currentBackpack = localStorage.getItem('cg_current_backpack') || 'none';
         let currentWeapon = localStorage.getItem('cg_current_weapon') || 'pistol';
+        if (!['pistol','usp','gold_pistol','rifle','sniper','knife','butterfly_knife','m9_bayonet','ak47','bazooka'].includes(currentWeapon) ||
+            (currentWeapon !== 'pistol' && !ownedWeapons.includes(currentWeapon))) {
+            currentWeapon = 'pistol';
+            localStorage.setItem('cg_current_weapon', currentWeapon);
+        }
 
         let itemTransforms = JSON.parse(localStorage.getItem('cg_transforms')) || {
             hat: { x:0, y:0.5, z:0, s:1, rx:0, ry:0, rz:0 },
@@ -1392,7 +1470,7 @@
             const glow = skinColor ? `filter:drop-shadow(0 0 5px ${paint})` : '';
             let shape = '';
             if (type === 'usp') {
-                shape = `<path d="M18 24 L72 24 L86 31 L84 39 L53 39 L48 51 L34 51 L34 39 L18 37 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M18 24 L73 24 L78 18 L82 18 L82 30 L72 34 L18 34 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/>`;
+                shape = `<path d="M2 22 L49 22 L49 18 L82 18 L89 22 L89 30 L82 35 L55 35 L51 48 L37 48 L34 36 L15 35 L2 32 Z" fill="#171b1a" stroke="#89938d" stroke-width="1.7"/><path d="M2 20 L49 20 L49 30 L2 30 Z" fill="#101312" stroke="#69736d" stroke-width="1.2"/><path d="M52 19 L83 19 L89 22 L89 28 L52 28 Z" fill="#363c39"/><path d="M55 36 L69 36 L67 55 L53 55 L49 48 Z" fill="#171a19" stroke="#69736d" stroke-width="1.4"/><path d="M54 40 L66 40 M53 44 L65 44 M52 48 L64 48" stroke="#343a37" stroke-width="1.4"/><path d="M37 36 L49 36 L47 46 L39 46 Z" fill="none" stroke="#a0aaa3" stroke-width="2"/><path d="M42 36 L44 43 L48 43" fill="none" stroke="#a0aaa3" stroke-width="1.5"/><path d="M16 35 L31 35 L32 51 L17 51 Z" fill="#111514" stroke="#5b655f" stroke-width="1.2"/><path d="M18 51 L32 51 L34 55 L17 55 Z" fill="#242a27" stroke="#69736d" stroke-width="1"/>`;
             } else if (type === 'butterfly_knife') {
                 shape = `<path d="M47 30 L82 9 L94 13 L58 35 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M47 34 L15 13 L5 18 L39 42 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M43 34 L19 53 L28 59 L51 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><path d="M53 34 L78 53 L69 59 L45 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><circle cx="47" cy="36" r="4" fill="#c5ccd0"/>`;
             } else if (type === 'm9_bayonet') {
@@ -1771,27 +1849,40 @@
         });
 
         window.selectWeapon = (id) => {
+            if (!weaponNames[id]) return false;
+            if (id !== 'pistol' && !ownedWeapons.includes(id)) {
+                marketNotice('Это оружие ещё не открыто.');
+                return false;
+            }
             if (sniperScopeOpen && id !== 'sniper') closeSniperScope();
-            if (id !== 'pistol' && !ownedWeapons.includes(id)) return;
             currentWeapon = id;
             localStorage.setItem('cg_current_weapon', id);
             setAmmoForWeapon(id);
             applyLocalWeaponState();
-            
-            // Обновляем превью
+
+            // Обновляем оружие на модели в магазине, если она уже создана.
             if (shopChicken && shopChicken.userData.headGroup) {
-                const wing = shopChicken.userData.headGroup.children.find(c => c.position.x > 0.5);
+                const wing = shopChicken.userData.weaponHand;
                 if (wing) {
-                    wing.clear();
-                    const gun = createWeaponModel(id);
+                    const oldGun = shopChicken.userData.weaponGroup;
+                    if (oldGun) {
+                        oldGun.parent?.remove(oldGun);
+                        oldGun.traverse(part => {
+                            if (part.geometry) part.geometry.dispose();
+                        });
+                    }
+                    const gun = createWeaponModel(id, equippedWeaponSkins[id] || null);
                     gun.position.set(0.1, -0.2, 0.4);
-                    gun.rotation.y = Math.PI; // Разворачиваем оружие вперед
+                    gun.rotation.y = Math.PI;
                     wing.add(gun);
+                    shopChicken.userData.weaponGroup = gun;
                 }
             }
-            
+
             updateShopUI();
+            if (typeof renderWeaponInventory === 'function') renderWeaponInventory();
             updateScopeButton();
+            return true;
         };
 
         window.buyWeapon = (id, price) => {
@@ -2037,6 +2128,10 @@
             if (['knife','butterfly_knife','m9_bayonet'].includes(currentWeapon) || isReloading || ammo >= maxAmmo) return;
             playerWeapon.userData.reloadStarted = performance.now();
             playerWeapon.userData.reloadDuration = currentWeapon === 'sniper' ? 1250 : (currentWeapon === 'bazooka' ? 2500 : 1500);
+            playerWeapon.userData.networkAction = 'reload';
+            playerWeapon.userData.networkActionDuration = playerWeapon.userData.reloadDuration;
+            playerWeapon.userData.networkActionAt = Date.now();
+            if (database && currentRoomId && myPlayerId) syncNetwork();
             isReloading = true;
             addChatMessage("Перезарядка...");
             const reloadTime = playerWeapon.userData.reloadDuration;
@@ -2253,7 +2348,62 @@
             skinId = null;
             const skin = null;
             const col = type === 'gold_pistol' ? 0xffd700 : (type === 'rifle' || type === 'ak47' ? 0x222222 : 0x333333);
-            if (type === 'butterfly_knife') {
+            if (type === 'usp') {
+                // USP: матовый чёрный корпус и длинный глушитель по изображению.
+                const metal = new THREE.MeshPhongMaterial({color:0x202423, shininess:45, specular:0x555b58});
+                const polymer = new THREE.MeshPhongMaterial({color:0x111514, shininess:18});
+                const detail = new THREE.MeshPhongMaterial({color:0x343b38, shininess:55});
+                const black = new THREE.MeshPhongMaterial({color:0x080a09, shininess:10});
+
+                const silencer = new THREE.Mesh(new THREE.CylinderGeometry(0.073,0.073,1.12,20), black);
+                silencer.rotation.x = Math.PI/2;
+                silencer.position.set(0,0.015,-0.88);
+                gun.add(silencer);
+                const silencerCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.083,0.083,0.075,20), detail);
+                silencerCollar.rotation.x = Math.PI/2;
+                silencerCollar.position.set(0,0.015,-0.30);
+                gun.add(silencerCollar);
+                const silencerEnd = new THREE.Mesh(new THREE.CylinderGeometry(0.074,0.074,0.035,20), black);
+                silencerEnd.rotation.x = Math.PI/2;
+                silencerEnd.position.set(0,0.015,-1.445);
+                gun.add(silencerEnd);
+
+                const slide = new THREE.Mesh(new THREE.BoxGeometry(0.19,0.16,0.76), metal);
+                slide.position.set(0,0.105,-0.02); gun.add(slide);
+                const slideTop = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.025,0.68), detail);
+                slideTop.position.set(0,0.198,-0.015); gun.add(slideTop);
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.40,12), detail);
+                barrel.rotation.x = Math.PI/2;
+                barrel.position.set(0,0.11,-0.48); gun.add(barrel);
+
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.105,0.68), polymer);
+                frame.position.set(0,0.005,0.055); gun.add(frame);
+                const dustCover = new THREE.Mesh(new THREE.BoxGeometry(0.16,0.075,0.27), polymer);
+                dustCover.position.set(0,-0.035,-0.27); gun.add(dustCover);
+
+                const grip = new THREE.Mesh(new THREE.BoxGeometry(0.145,0.36,0.19), polymer);
+                grip.position.set(0,-0.205,0.235); grip.rotation.x=-0.13; gun.add(grip);
+                const gripBase = new THREE.Mesh(new THREE.BoxGeometry(0.17,0.045,0.22), detail);
+                gripBase.position.set(0,-0.395,0.255); gun.add(gripBase);
+                for (let i=0;i<5;i++) {
+                    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.008,0.018,0.145), black);
+                    groove.position.set(-0.075,-0.105-i*0.045,0.24); gun.add(groove);
+                }
+
+                const guardTop = new THREE.Mesh(new THREE.BoxGeometry(0.145,0.025,0.25), detail);
+                guardTop.position.set(0,-0.075,0.055); gun.add(guardTop);
+                const guardFront = new THREE.Mesh(new THREE.BoxGeometry(0.025,0.12,0.25), detail);
+                guardFront.position.set(0,-0.13,-0.055); gun.add(guardFront);
+                const guardRear = new THREE.Mesh(new THREE.BoxGeometry(0.025,0.12,0.17), detail);
+                guardRear.position.set(0,-0.13,0.145); gun.add(guardRear);
+                const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.025,0.095,0.025), black);
+                trigger.position.set(0,-0.13,0.015); gun.add(trigger);
+
+                const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.055,0.075), black);
+                rearSight.position.set(0,0.215,0.30); gun.add(rearSight);
+                const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.055,0.045,0.055), black);
+                frontSight.position.set(0,0.22,-0.30); gun.add(frontSight);
+            } else if (type === 'butterfly_knife') {
                 const steel = new THREE.MeshPhongMaterial({color:0xcbd5dc, shininess:100, specular:0xffffff});
                 const dark = new THREE.MeshPhongMaterial({color:0x252b30});
                 const blade = new THREE.Mesh(new THREE.BoxGeometry(0.045,0.07,0.43), steel);
@@ -2717,6 +2867,8 @@
             const gun = createWeaponModel(type, skinId);
             gun.position.set(0.1, -0.2, 0.4);
             gun.rotation.set(0, Math.PI, 0);
+            gun.userData.restRotation = gun.rotation.clone();
+            gun.userData.restPosition = gun.position.clone();
             gun.userData.weaponType = type;
             gun.userData.skinId = skinId || null;
             wing.add(gun);
@@ -2941,7 +3093,10 @@
                 }
             }
             playerWeapon.userData.networkAction = 'inspect';
+            playerWeapon.userData.networkActionVariant = playerWeapon.userData.inspectVariant;
+            playerWeapon.userData.networkActionDuration = playerWeapon.userData.inspectUntil - playerWeapon.userData.inspectStarted;
             playerWeapon.userData.networkActionAt = Date.now();
+            if (database && currentRoomId && myPlayerId) syncNetwork();
         }
         document.getElementById('touch-inspect').addEventListener('pointerdown',e=>{e.preventDefault();inspectCurrentWeapon();});
 
@@ -2997,6 +3152,25 @@
             }
         });
 
+        function restoreGameplayAfterRespawn() {
+            deathScreen.style.display = 'none';
+            document.getElementById('pause-menu').style.display = 'none';
+            document.getElementById('pause-modal').style.display = 'none';
+            weaponMenu.style.display = 'none';
+            document.getElementById('emotion-menu').style.display = 'none';
+            chatInput.style.display = 'none';
+            ui.style.display = 'block';
+            crosshair.style.display = 'block';
+            hpBar.style.display = 'block';
+            chat.style.display = 'flex';
+            timerHud.style.display = 'block';
+            isPlaying = true;
+            if (playerModel) playerModel.visible = cameraMode > 0;
+            if (playerWeapon) playerWeapon.visible = cameraMode === 0;
+            applyWeaponState(playerModel, currentWeapon, equippedWeaponSkins[currentWeapon] || null, true);
+            syncMobileControls();
+        }
+
         window.resumeGame = () => {
             const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
             if (touchDevice) {
@@ -3025,14 +3199,24 @@
             location.reload();
         };
 
-        continueBtn.addEventListener('click', () => {
-            health = 100; 
+        continueBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            health = 100;
             hpFill.style.width = '100%';
-            if (database) database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({ hp: 100, alive: true, weapon: currentWeapon, weaponSkin: equippedWeaponSkins[currentWeapon] || null, lastHitBy: "" });
-            applyWeaponState(playerModel, currentWeapon, equippedWeaponSkins[currentWeapon] || null, true);
-            playerWeapon.visible = cameraMode === 0;
-            deathScreen.style.display = 'none';
-            controls.lock();
+            resetPlayerHP();
+            if (database && currentRoomId && myPlayerId) {
+                database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({
+                    hp: {val:100, by:''}, alive:true, weapon:currentWeapon,
+                    weaponSkin:equippedWeaponSkins[currentWeapon] || null, lastHitBy:''
+                });
+            }
+            closeSniperScope();
+            restoreGameplayAfterRespawn();
+            const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+            if (!touchDevice) {
+                try { controls.lock(); } catch (_) { /* The game UI is already restored if Pointer Lock is unavailable. */ }
+            }
         });
 
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = false;
@@ -3051,40 +3235,35 @@
                 return;
             }
             if (e.code === 'KeyE' && isPlaying) {
+                e.preventDefault();
                 if (weaponMenu.style.display === 'block') {
                     weaponMenu.style.display = 'none';
-                    const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-                    if (!touchDevice) controls.lock();
+                    if (!('ontouchstart' in window) && navigator.maxTouchPoints <= 0) controls.lock();
                     touchLookId = null;
                 } else {
                     weaponList.innerHTML = '';
                     ownedWeapons.forEach(w => {
-                        const div = document.createElement('div');
-                        div.className = 'weapon-slot';
-                        let label = '🔥 АВТОМАТ';
-                        if (w === 'pistol') label = '🔫 ПИСТОЛЕТ';
-                        if (w === 'gold_pistol') label = '✨ ЗОЛОТОЙ ПИСТОЛЕТ';
-                        if (w === 'knife') label = '🔪 НОЖ';
-                        if (w === 'butterfly_knife') label = '🦋 БАБОЧКА';
-                        if (w === 'm9_bayonet') label = '🔪 M9 BAYONET';
-                        if (w === 'bazooka') label = '🚀 ГРАНАТОМЁТ';
-                        if (w === 'ak47') label = '🔫 AK-47';
-                        if (w === 'rifle') label = '🔥 АВТОМАТ';
-                        div.innerText = label;
-                        div.onclick = () => {
-                            currentWeapon = w;
-                            localStorage.setItem('cg_current_weapon', w);
-                            setAmmoForWeapon(w);
-                            applyLocalWeaponState();
+                        if (!weaponNames[w]) return;
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'weapon-slot' + (w === currentWeapon ? ' active' : '');
+                        button.textContent = `${weaponIcons[w] || '🔫'} ${weaponNames[w]}${w === currentWeapon ? ' · ВЫБРАНО' : ''}`;
+                        button.addEventListener('click', (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const selected = window.selectWeapon(w);
+                            if (!selected) return;
                             weaponMenu.style.display = 'none';
-                            // On touch devices, keep the swipe-look controls active without requesting Pointer Lock.
-                            const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-                            if (!touchDevice) controls.lock();
+                            if (!('ontouchstart' in window) && navigator.maxTouchPoints <= 0) {
+                                try { controls.lock(); } catch (_) {}
+                            }
                             touchLookId = null;
-                        };
-                        weaponList.appendChild(div);
+                        });
+                        weaponList.appendChild(button);
                     });
-                    controls.unlock(); weaponMenu.style.display = 'block';
+                    weaponMenu.style.display = 'block';
+                    weaponMenu.style.pointerEvents = 'auto';
+                    if (!('ontouchstart' in window) && navigator.maxTouchPoints <= 0) controls.unlock();
                 }
                 return;
             }
@@ -3491,8 +3670,10 @@
                 ry: angle,
                 rx: -pitch,
                 weapon: currentWeapon,
-                action: playerWeapon && playerWeapon.userData.networkActionAt && Date.now() - playerWeapon.userData.networkActionAt < 2200 ? playerWeapon.userData.networkAction : null,
+                action: playerWeapon && playerWeapon.userData.networkActionAt && Date.now() - playerWeapon.userData.networkActionAt < 3000 ? playerWeapon.userData.networkAction : null,
                 actionAt: playerWeapon && playerWeapon.userData.networkActionAt || 0,
+                actionDuration: playerWeapon && playerWeapon.userData.networkActionDuration || 0,
+                actionVariant: playerWeapon && playerWeapon.userData.networkActionVariant || null,
                 weaponSkin: equippedWeaponSkins[currentWeapon] || null,
                 alive: health > 0,
                 hat: currentHat,
@@ -3534,6 +3715,8 @@
             if (data.actionAt && data.actionAt !== p.userData.lastActionAt) {
                 p.userData.lastActionAt = data.actionAt;
                 p.userData.remoteAction = data.action || null;
+                p.userData.remoteActionVariant = data.actionVariant || null;
+                p.userData.remoteActionDuration = Number(data.actionDuration) || 0;
                 p.userData.remoteActionStarted = performance.now();
             }
             p.position.set(data.x, data.y - 1.2, data.z);
@@ -3555,21 +3738,105 @@
             const remoteHp = data.hp !== undefined ? (typeof data.hp === 'object' ? data.hp.val : data.hp) : 100;
             applyWeaponState(p, remoteWeapon, remoteSkin, data.alive !== false && Number(remoteHp) > 0);
             if (p.userData.weaponGroup && p.userData.remoteActionStarted) {
+                const weaponGroup = p.userData.weaponGroup;
+                const action = p.userData.remoteAction;
                 const elapsed = performance.now() - p.userData.remoteActionStarted;
-                const duration = p.userData.remoteAction === 'inspect' ? 1450 : 260;
-                const wave = Math.sin(Math.min(1, elapsed / duration) * Math.PI);
-                p.userData.weaponGroup.rotation.x = p.userData.remoteAction === 'shoot' ? -wave * 0.55 : wave * 0.9;
-                p.userData.weaponGroup.rotation.z = p.userData.remoteAction === 'inspect' ? wave * 0.7 : 0;
-                const remoteHandles = p.userData.weaponGroup.userData.butterflyHandles || [];
-                remoteHandles.forEach((handle, index) => {
-                    const phase = Math.min(1, elapsed / duration) * Math.PI * 8 + index * Math.PI;
-                    handle.rotation.x = p.userData.remoteAction === 'inspect'
-                        ? (index === 0 ? -1 : 1) * (0.18 + Math.abs(Math.sin(phase)) * 2.35)
-                        : (index === 0 ? -1 : 1) * (0.12 + wave * 1.8);
-                });
+                const defaultDuration = action === 'inspect' ? 1200 : action === 'reload' ? 1500 : action === 'melee' ? 420 : 170;
+                const duration = Math.max(120, Math.min(3000, p.userData.remoteActionDuration || defaultDuration));
+                const progress = Math.max(0, Math.min(1, elapsed / duration));
+                const wave = Math.sin(progress * Math.PI);
+                const rest = weaponGroup.userData.restRotation || new THREE.Euler(0, Math.PI, 0);
+
+                // Двигаем оружие относительно его штатного положения (Y = PI),
+                // а не сбрасываем вращение в ноль — иначе у остальных оно переворачивается.
+                weaponGroup.rotation.set(rest.x, rest.y, rest.z);
+                if (action === 'shoot') {
+                    weaponGroup.rotation.x = rest.x - wave * 0.20;
+                    weaponGroup.position.z = 0.4 + wave * 0.07;
+                } else if (action === 'reload') {
+                    weaponGroup.rotation.x = rest.x + wave * 0.34;
+                    weaponGroup.position.y = -0.2 - wave * 0.12;
+                } else if (action === 'melee') {
+                    weaponGroup.rotation.x = rest.x - wave * 0.72;
+                    weaponGroup.rotation.y = rest.y + wave * 0.18;
+                    weaponGroup.rotation.z = rest.z + wave * 0.20;
+                    weaponGroup.position.z = 0.4 - wave * 0.22;
+                } else if (action === 'inspect') {
+                    const isButterfly = weaponGroup.userData.weaponType === 'butterfly_knife';
+                    if (isButterfly) {
+                        // Повторяем тот же вариант, который запустил владелец ножа.
+                        // Вариант передаётся по сети, поэтому у всех клиентов одна и та же анимация.
+                        const variant = p.userData.remoteActionVariant || 'flip';
+                        const smooth = t => {
+                            t = Math.max(0, Math.min(1, t));
+                            return t * t * (3 - 2 * t);
+                        };
+                        if (variant === 'toss') {
+                            const flight = Math.max(0, Math.min(1, (progress - 0.12) / 0.72));
+                            const arc = Math.sin(flight * Math.PI);
+                            const spin = flight * Math.PI * 2;
+
+                            // В третьем лице нож поднимается над рукой, прокручивается и возвращается.
+                            weaponGroup.position.set(
+                                (weaponGroup.userData.restPosition?.x ?? 0.1) + 0.52 * arc,
+                                (weaponGroup.userData.restPosition?.y ?? -0.2) + 0.95 * arc,
+                                (weaponGroup.userData.restPosition?.z ?? 0.4)
+                            );
+                            weaponGroup.rotation.set(
+                                rest.x + spin,
+                                rest.y + 0.18 * arc,
+                                rest.z + Math.sin(flight * Math.PI) * 0.42
+                            );
+                            const right = (weaponGroup.userData.butterflyHandles || []).find(h => h.userData.side === 1);
+                            const left = (weaponGroup.userData.butterflyHandles || []).find(h => h.userData.side === -1);
+                            if (right) right.rotation.set((right.userData.restX || 0) + Math.sin(flight * Math.PI * 2) * 3.0 + arc * 1.15, 0.18 * arc, 0.12 * arc);
+                            if (left) left.rotation.set((left.userData.restX || 0) - Math.sin(flight * Math.PI * 2 + 0.8) * 2.8 - arc * 0.9, -0.16 * arc, -0.10 * arc);
+                        } else {
+                            // Тот же flip: рукоятки складываются по очереди,
+                            // затем клинок проходит полный оборот и возвращается в хват.
+                            const right = (weaponGroup.userData.butterflyHandles || []).find(h => h.userData.side === 1);
+                            const left = (weaponGroup.userData.butterflyHandles || []).find(h => h.userData.side === -1);
+                            const fold = smooth(progress / 0.22) * 2.95;
+                            const release = smooth((progress - 0.57) / 0.25) * 2.85;
+                            if (right) right.rotation.set(0.12 + fold - release, 0.10 + Math.sin(progress * Math.PI) * 0.22, 0.06);
+                            if (left) {
+                                const counter = Math.sin(Math.max(0, Math.min(1, (progress - 0.16) / 0.62)) * Math.PI);
+                                left.rotation.set(-0.10 - counter * 1.55, -0.12 - counter * 0.30, -0.08);
+                            }
+                            const rollPhase = smooth((progress - 0.20) / 0.46);
+                            weaponGroup.rotation.set(
+                                rest.x + Math.sin(rollPhase * Math.PI) * 0.46,
+                                rest.y + Math.sin(rollPhase * Math.PI) * 0.82,
+                                rest.z + rollPhase * Math.PI * 2
+                            );
+                            weaponGroup.position.set(
+                                weaponGroup.userData.restPosition?.x ?? 0.1,
+                                (weaponGroup.userData.restPosition?.y ?? -0.2) + Math.sin(rollPhase * Math.PI) * 0.13,
+                                weaponGroup.userData.restPosition?.z ?? 0.4
+                            );
+                        }
+                    } else {
+                        weaponGroup.rotation.x = rest.x + wave * 0.48;
+                        weaponGroup.rotation.y = rest.y + Math.sin(progress * Math.PI * 2) * 0.20;
+                        weaponGroup.rotation.z = rest.z + wave * 0.48;
+                        weaponGroup.position.y = (weaponGroup.userData.restPosition?.y ?? -0.2) + wave * 0.10;
+                    }
+                }
+
+                const remoteHandles = weaponGroup.userData.butterflyHandles || [];
+                if (action === 'melee') {
+                    remoteHandles.forEach(handle => {
+                        const side = handle.userData.side || 1;
+                        handle.rotation.set((handle.userData.restX || 0) + side * wave * 1.2, side * wave * 0.16, 0);
+                    });
+                }
+
                 if (elapsed >= duration) {
-                    remoteHandles.forEach((handle, index) => { handle.rotation.x = index === 0 ? -0.08 : 0.08; handle.rotation.y = 0; handle.rotation.z = 0; });
-                    p.userData.weaponGroup.rotation.set(0, 0, 0);
+                    weaponGroup.rotation.copy(rest);
+                    weaponGroup.position.copy(weaponGroup.userData.restPosition || new THREE.Vector3(0.1, -0.2, 0.4));
+                    remoteHandles.forEach(handle => {
+                        handle.rotation.set(handle.userData.restX || 0, 0, 0);
+                    });
                     p.userData.remoteActionStarted = 0;
                 }
             }
@@ -3617,6 +3884,10 @@
                 playerWeapon.userData.slashUntil = now + 420;
                 playerWeapon.userData.slashType = currentWeapon;
                 playerWeapon.userData.inspectQueued = true;
+                playerWeapon.userData.networkAction = 'melee';
+                playerWeapon.userData.networkActionDuration = 420;
+                playerWeapon.userData.networkActionAt = Date.now();
+                if (database && currentRoomId && myPlayerId) syncNetwork();
             }
 
             const meleeRange = 3.5;
@@ -3646,7 +3917,14 @@
                     return;
                 }
                 ammo--;
-                if (playerWeapon) { playerWeapon.userData.shootStarted = performance.now(); playerWeapon.userData.shootUntil = playerWeapon.userData.shootStarted + 170; playerWeapon.userData.networkAction = 'shoot'; playerWeapon.userData.networkActionAt = Date.now(); }
+                if (playerWeapon) {
+                    playerWeapon.userData.shootStarted = performance.now();
+                    playerWeapon.userData.shootUntil = playerWeapon.userData.shootStarted + 170;
+                    playerWeapon.userData.networkAction = 'shoot';
+                    playerWeapon.userData.networkActionDuration = 170;
+                    playerWeapon.userData.networkActionAt = Date.now();
+                    if (database && currentRoomId && myPlayerId) syncNetwork();
+                }
                 document.getElementById('ammo-hud').innerText = `${ammo} / ∞`;
                 if (ammo <= 0) startReload();
             }
@@ -4244,9 +4522,14 @@ shopChicken.userData.rightLeg.rotation.x = 0;
                         scene.remove(b); enemyBullets.splice(i, 1);
                         if(health <= 0) {
                             addChatMessage(`${b.userData.shooter} ➔ ${nickInput.value}`, 'kill');
-                            enemyPoints++; isPlaying = false; controls.unlock();
+                            enemyPoints++; isPlaying = false;
+                            try { controls.unlock(); } catch (_) {}
+                            if (playerModel?.userData.weaponGroup) playerModel.userData.weaponGroup.visible = false;
+                            if (playerWeapon) playerWeapon.visible = false;
+                            if (database && currentRoomId && myPlayerId) database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({alive:false, hp:{val:0, by:b.userData.shooter}});
                             killerNameDisplay.innerText = b.userData.shooter;
                             deathScreen.style.display = 'flex';
+                            syncMobileControls();
                         }
                         continue;
                     }
