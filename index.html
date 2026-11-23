@@ -1476,8 +1476,8 @@
             } else if (type === 'butterfly_knife') {
                 shape = `<path d="M47 30 L82 9 L94 13 L58 35 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M47 34 L15 13 L5 18 L39 42 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M43 34 L19 53 L28 59 L51 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><path d="M53 34 L78 53 L69 59 L45 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><circle cx="47" cy="36" r="4" fill="#c5ccd0"/>`;
             } else if (type === 'karambit') {
-                // В предпросмотре используется SVG: здесь нет объекта gun из 3D-сцены.
-                shape = `<path d="M54 34 C42 8 18 9 12 28 C8 42 20 50 32 44 C23 46 17 39 19 31 C23 20 37 22 45 34 L55 42 L84 20 L96 25 L62 49 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M55 39 L77 24" stroke="#fff" stroke-opacity=".7" stroke-width="1.5"/><path d="M45 37 L31 31 L22 39 L39 48 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><circle cx="35" cy="41" r="5" fill="none" stroke="#c4cbc6" stroke-width="3"/>`;
+                // Эскиз керамбита для карточки магазина (SVG, без 3D-объектов).
+                shape = `<path d="M18 35 C28 20 53 10 73 14 C92 18 94 34 81 43 C68 52 53 44 49 34 C58 38 68 38 75 32 C80 27 77 22 71 21 C54 17 37 29 29 39 L18 35 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M20 34 L43 42 L51 51 L43 58 L31 49 L18 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><path d="M34 44 L43 51 M39 40 L48 47" stroke="#c4cbc6" stroke-width="2"/><circle cx="39" cy="53" r="5" fill="none" stroke="#c4cbc6" stroke-width="2"/>`;
             } else if (type === 'm9_bayonet') {
                 shape = `<path d="M8 28 L76 19 L96 30 L76 40 L8 34 Z" fill="${paint}" stroke="#e2e8e4" stroke-width="2"/><path d="M9 29 L30 29 L30 39 L9 39 Z" fill="#343b39" stroke="#89938d" stroke-width="2"/><path d="M29 29 L29 39" stroke="#c4cbc6" stroke-width="2"/>`;
             } else if (type === 'knife') {
@@ -2119,4 +2119,2610 @@
             openSniperScope();
         });
         document.getElementById('scope-close').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); closeSniperScope(); });
-        document.getElementById('scope-close').a
+        document.getElementById('scope-close').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); closeSniperScope(); });
+        document.addEventListener('keydown', e => { if (e.code === 'Escape' && sniperScopeOpen) closeSniperScope(); });
+
+        function setAmmoForWeapon(w) {
+            maxAmmo = w === 'sniper' ? 1 : (w === 'bazooka' ? 5 : 30);
+            ammo = maxAmmo;
+            isReloading = false;
+            document.getElementById('ammo-hud').innerText = `${ammo} / ∞`;
+        }
+
+        function startReload() {
+            if (['knife','stiletto','butterfly_knife','m9_bayonet','karambit'].includes(currentWeapon) || isReloading || ammo >= maxAmmo) return;
+            playerWeapon.userData.reloadStarted = performance.now();
+            playerWeapon.userData.reloadDuration = currentWeapon === 'sniper' ? 1250 : (currentWeapon === 'bazooka' ? 2500 : 1500);
+            playerWeapon.userData.networkAction = 'reload';
+            playerWeapon.userData.networkActionDuration = playerWeapon.userData.reloadDuration;
+            playerWeapon.userData.networkActionAt = Date.now();
+            if (database && currentRoomId && myPlayerId) syncNetwork();
+            isReloading = true;
+            addChatMessage("Перезарядка...");
+            const reloadTime = playerWeapon.userData.reloadDuration;
+            setTimeout(() => {
+                ammo = maxAmmo;
+                isReloading = false;
+                document.getElementById('ammo-hud').innerText = `${ammo} / ∞`;
+            }, reloadTime);
+        }
+
+        function explode(pos, shooterName) {
+            const radius = 6;
+            const boom = new THREE.Mesh(
+                new THREE.SphereGeometry(1, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.9 })
+            );
+            boom.position.copy(pos);
+            scene.add(boom);
+            const light = new THREE.PointLight(0xff6600, 8, 25);
+            light.position.copy(pos);
+            scene.add(light);
+            let boomT = 0;
+            const grow = setInterval(() => {
+                boomT += 0.08;
+                boom.scale.setScalar(1 + boomT * 5);
+                boom.material.opacity = Math.max(0, 0.9 - boomT);
+                light.intensity = Math.max(0, 8 - boomT * 10);
+                if (boomT >= 1) {
+                    clearInterval(grow);
+                    scene.remove(boom); scene.remove(light);
+                }
+            }, 30);
+
+            for (let id in remotePlayers) {
+                const rp = remotePlayers[id];
+                const center = rp.position.clone().add(new THREE.Vector3(0, 1, 0));
+                const dist = pos.distanceTo(center);
+                if (dist < radius && database) {
+                    const dmg = Math.max(10, Math.round(100 - (dist / radius) * 100));
+                    database.ref(`rooms/${currentRoomId}/players/${id}/hp`).transaction((current) => {
+                        let oldVal = (typeof current === 'object') ? (current.val ?? 100) : (current ?? 100);
+                        if (oldVal <= 0) return;
+                        return { val: Math.max(0, oldVal - dmg), by: shooterName || 'Player' };
+                    });
+                }
+            }
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const en = enemies[i];
+                const dist = pos.distanceTo(en.position.clone().add(new THREE.Vector3(0, 1, 0)));
+                if (dist < radius) {
+                    scene.remove(en);
+                    enemies.splice(i, 1);
+                    teamPoints++;
+                    updateHUD();
+                }
+            }
+        }
+
+        function createPropModel(type) {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshPhongMaterial({color: 0x8b4513});
+            
+            if (type === 'wall') {
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(5, 4, 0.3), new THREE.MeshPhongMaterial({color: 0xdddddd}));
+                wall.position.y = 2; group.add(wall);
+            } else if (type === 'floor_item') {
+                const fl = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 6), new THREE.MeshPhongMaterial({color: 0x333333}));
+                group.add(fl);
+            } else if (type === 'phone') {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 0.05), new THREE.MeshPhongMaterial({color: 0x111111}));
+                const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.5), new THREE.MeshBasicMaterial({color: 0x3333ff}));
+                screen.position.z = 0.03; body.add(screen); group.add(body);
+            } else if (type === 'pouf') {
+                const p = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.6, 16), new THREE.MeshPhongMaterial({color: 0xff3333}));
+                group.add(p);
+            } else if (type === 'laptop') {
+                const b = new THREE.Mesh(new THREE.BoxGeometry(1, 0.05, 0.7), new THREE.MeshPhongMaterial({color: 0x222222}));
+                const s = new THREE.Mesh(new THREE.BoxGeometry(1, 0.7, 0.05), new THREE.MeshPhongMaterial({color: 0x222222}));
+                s.position.set(0, 0.35, -0.35); s.rotation.x = -0.2; group.add(b); group.add(s);
+            } else if (type === 'backpack') {
+                const p = new THREE.Mesh(new RoundedBoxGeometry(0.6, 0.8, 0.3, 2, 0.1), new THREE.MeshPhongMaterial({color: 0x006600}));
+                group.add(p);
+            } else if (type === 'tv') {
+                const screen = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 0.4), new THREE.MeshPhongMaterial({color: 0x222222}));
+                group.add(screen);
+                const stand = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.4), new THREE.MeshPhongMaterial({color: 0x111111}));
+                stand.position.y = -0.7; group.add(stand);
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, 0.1), new THREE.MeshPhongMaterial({color: 0x111111}));
+                leg.position.y = -0.55; group.add(leg);
+            } else if (type === 'table') {
+                const top = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.15, 1.8), mat);
+                group.add(top);
+                const legGeo = new THREE.BoxGeometry(0.15, 1.2, 0.15);
+                const positions = [[1, -0.6, 0.7], [-1, -0.6, 0.7], [1, -0.6, -0.7], [-1, -0.6, -0.7]];
+                positions.forEach(p => {
+                    const leg = new THREE.Mesh(legGeo, mat);
+                    leg.position.set(p[0], p[1], p[2]);
+                    group.add(leg);
+                });
+            } else if (type === 'chair') {
+                const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.8), mat);
+                group.add(seat);
+                const back = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1, 0.15), mat);
+                back.position.set(0, 0.5, -0.35); group.add(back);
+                const legGeo = new THREE.BoxGeometry(0.1, 0.7, 0.1);
+                const positions = [[0.3, -0.4, 0.3], [-0.3, -0.4, 0.3], [0.3, -0.4, -0.3], [-0.3, -0.4, -0.3]];
+                positions.forEach(p => {
+                    const leg = new THREE.Mesh(legGeo, mat);
+                    leg.position.set(p[0], p[1], p[2]);
+                    group.add(leg);
+                });
+            } else if (type === 'dumbbell') {
+                const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1, 8), new THREE.MeshPhongMaterial({color: 0xaaaaaa}));
+                bar.rotation.z = Math.PI/2; group.add(bar);
+                const d1 = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.15,16), new THREE.MeshPhongMaterial({color: 0x333333}));
+                d1.position.x = 0.4; d1.rotation.z = Math.PI/2; group.add(d1);
+                const d2 = d1.clone(); d2.position.x = -0.4; group.add(d2);
+            } else if (type === 'flower') {
+                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.8,8), new THREE.MeshPhongMaterial({color: 0x228b22}));
+                group.add(stem);
+                const bud = new THREE.Mesh(new THREE.SphereGeometry(0.2,8,8), new THREE.MeshPhongMaterial({color: 0xff69b4}));
+                bud.position.y = 0.4; group.add(bud);
+            } else if (type === 'tree') {
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,1.5,8), new THREE.MeshPhongMaterial({color: 0x5d4037}));
+                group.add(trunk);
+                const leaves = new THREE.Mesh(new THREE.ConeGeometry(1, 2.5, 8), new THREE.MeshPhongMaterial({color: 0x2e7d32}));
+                leaves.position.y = 1.8; group.add(leaves);
+            } else if (type === 'door') {
+                const frameL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.4, 0.15), new THREE.MeshPhongMaterial({color: 0x442211}));
+                frameL.position.set(-0.65, 1.1, 0); group.add(frameL);
+                const frameR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.4, 0.15), new THREE.MeshPhongMaterial({color: 0x442211}));
+                frameR.position.set(0.65, 1.1, 0); group.add(frameR);
+                const frameT = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.15), new THREE.MeshPhongMaterial({color: 0x442211}));
+                frameT.position.set(0, 2.3, 0); group.add(frameT);
+
+                const hinge = new THREE.Group(); hinge.position.set(-0.6, 1.1, 0);
+                const plate = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.1), mat);
+                plate.position.set(0.6, 0, 0); hinge.add(plate);
+                const handle = new THREE.Mesh(new THREE.SphereGeometry(0.06), new THREE.MeshPhongMaterial({color:0xffd700}));
+                handle.position.set(1.05, 0, 0.08); plate.add(handle);
+                group.add(hinge);
+                group.userData.isDoor = true; group.userData.isOpen = false; group.userData.hinge = hinge;
+            } else if (type === 'camera') {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.6), new THREE.MeshPhongMaterial({color: 0x222222}));
+                body.position.y = 0.2; group.add(body);
+                const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.15, 16), new THREE.MeshPhongMaterial({color: 0x333333}));
+                lens.rotation.x = Math.PI/2; lens.position.set(0, 0.2, 0.35); group.add(lens);
+                const lensFront = new THREE.Mesh(new THREE.CircleGeometry(0.1, 16), new THREE.MeshPhongMaterial({color: 0x1111ff, emissive: 0x1111ff}));
+                lensFront.position.set(0, 0.2, 0.43); group.add(lensFront);
+                const flash = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.08, 0.05), new THREE.MeshPhongMaterial({color: 0xff3333}));
+                flash.position.set(0.2, 0.38, 0.3); group.add(flash);
+                const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.15, 0.1), new THREE.MeshPhongMaterial({color: 0x111111}));
+                handle.position.set(0, 0.05, 0.3); group.add(handle);
+
+                // Виртуальная камера для съёмки
+                const virtCam = new THREE.PerspectiveCamera(70, 16/9, 0.1, 300);
+                virtCam.position.set(0, 0.4, 0);
+                virtCam.lookAt(0, 0.4, 1);
+                group.add(virtCam);
+                group.userData.isCamera = true;
+                group.userData.virtCam = virtCam;
+            } else if (type === 'camera_screen') {
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.05, 0.1), new THREE.MeshPhongMaterial({color: 0x111111}));
+                group.add(frame);
+                const stand = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.9, 0.15), new THREE.MeshPhongMaterial({color: 0x222222}));
+                stand.position.y = -0.85; group.add(stand);
+                const base = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.5), new THREE.MeshPhongMaterial({color: 0x222222}));
+                base.position.y = -1.3; group.add(base);
+                const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 0.88), new THREE.MeshBasicMaterial({color: 0x050505}));
+                screen.position.z = 0.06; group.add(screen);
+                group.userData.isScreen = true;
+                group.userData.screenMesh = screen;
+                group.userData.rt = null;
+            } else if (type === 'npc') {
+                const chicken = createChickenModel(false, false);
+                chicken.position.y = -0.5;
+                group.add(chicken);
+                group.userData.isNPC = true;
+            } else {
+                const brick = new THREE.Mesh(new THREE.BoxGeometry(1, 0.5, 0.5), new THREE.MeshPhongMaterial({color: 0x8b0000}));
+                group.add(brick);
+            }
+            return group;
+        }
+
+        function addChatMessage(msg, type = 'normal', skipNetwork = false) {
+            const div = document.createElement('div');
+            div.className = 'chat-msg' + (type === 'kill' ? ' kill-log' : '');
+            div.innerText = msg;
+            chatMessages.appendChild(div);
+            if (chatMessages.childNodes.length > 8) chatMessages.removeChild(chatMessages.firstChild);
+            
+            // Отправка в сеть
+            if (!skipNetwork && database && currentRoomId) {
+                database.ref(`rooms/${currentRoomId}/chat`).push({
+                    msg: msg,
+                    type: type,
+                    time: Date.now()
+                });
+            }
+
+            setTimeout(() => {
+                if (div.parentNode) {
+                    div.style.transition = 'opacity 1s';
+                    div.style.opacity = '0';
+                    setTimeout(() => div.parentNode && div.parentNode.removeChild(div), 1000);
+                }
+            }, 7000);
+        }
+
+        function createWeaponModel(type = 'pistol', skinId = null) {
+            const gun = new THREE.Group();
+            skinId = null;
+            const skin = null;
+            const col = type === 'gold_pistol' ? 0xffd700 : (type === 'rifle' || type === 'ak47' ? 0x222222 : 0x333333);
+            if (type === 'usp') {
+                // USP: матовый чёрный корпус и длинный глушитель по изображению.
+                const metal = new THREE.MeshPhongMaterial({color:0x202423, shininess:45, specular:0x555b58});
+                const polymer = new THREE.MeshPhongMaterial({color:0x111514, shininess:18});
+                const detail = new THREE.MeshPhongMaterial({color:0x343b38, shininess:55});
+                const black = new THREE.MeshPhongMaterial({color:0x080a09, shininess:10});
+
+                const silencer = new THREE.Mesh(new THREE.CylinderGeometry(0.073,0.073,1.12,20), black);
+                silencer.rotation.x = Math.PI/2;
+                silencer.position.set(0,0.015,-0.88);
+                gun.add(silencer);
+                const silencerCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.083,0.083,0.075,20), detail);
+                silencerCollar.rotation.x = Math.PI/2;
+                silencerCollar.position.set(0,0.015,-0.30);
+                gun.add(silencerCollar);
+                const silencerEnd = new THREE.Mesh(new THREE.CylinderGeometry(0.074,0.074,0.035,20), black);
+                silencerEnd.rotation.x = Math.PI/2;
+                silencerEnd.position.set(0,0.015,-1.445);
+                gun.add(silencerEnd);
+
+                const slide = new THREE.Mesh(new THREE.BoxGeometry(0.19,0.16,0.76), metal);
+                slide.position.set(0,0.105,-0.02); gun.add(slide);
+                const slideTop = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.025,0.68), detail);
+                slideTop.position.set(0,0.198,-0.015); gun.add(slideTop);
+                const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.40,12), detail);
+                barrel.rotation.x = Math.PI/2;
+                barrel.position.set(0,0.11,-0.48); gun.add(barrel);
+
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.105,0.68), polymer);
+                frame.position.set(0,0.005,0.055); gun.add(frame);
+                const dustCover = new THREE.Mesh(new THREE.BoxGeometry(0.16,0.075,0.27), polymer);
+                dustCover.position.set(0,-0.035,-0.27); gun.add(dustCover);
+
+                const grip = new THREE.Mesh(new THREE.BoxGeometry(0.145,0.36,0.19), polymer);
+                grip.position.set(0,-0.205,0.235); grip.rotation.x=-0.13; gun.add(grip);
+                const gripBase = new THREE.Mesh(new THREE.BoxGeometry(0.17,0.045,0.22), detail);
+                gripBase.position.set(0,-0.395,0.255); gun.add(gripBase);
+                for (let i=0;i<5;i++) {
+                    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.008,0.018,0.145), black);
+                    groove.position.set(-0.075,-0.105-i*0.045,0.24); gun.add(groove);
+                }
+
+                const guardTop = new THREE.Mesh(new THREE.BoxGeometry(0.145,0.025,0.25), detail);
+                guardTop.position.set(0,-0.075,0.055); gun.add(guardTop);
+                const guardFront = new THREE.Mesh(new THREE.BoxGeometry(0.025,0.12,0.25), detail);
+                guardFront.position.set(0,-0.13,-0.055); gun.add(guardFront);
+                const guardRear = new THREE.Mesh(new THREE.BoxGeometry(0.025,0.12,0.17), detail);
+                guardRear.position.set(0,-0.13,0.145); gun.add(guardRear);
+                const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.025,0.095,0.025), black);
+                trigger.position.set(0,-0.13,0.015); gun.add(trigger);
+
+                const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.055,0.075), black);
+                rearSight.position.set(0,0.215,0.30); gun.add(rearSight);
+                const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.055,0.045,0.055), black);
+                frontSight.position.set(0,0.22,-0.30); gun.add(frontSight);
+            } else if (type === 'stiletto') {
+                // Складной стилето: узкая стальная клинковая часть на шарнире и рукоять с накладками.
+                const steel = new THREE.MeshPhongMaterial({color:0xd9e1e6, shininess:110, specular:0xffffff});
+                const dark = new THREE.MeshPhongMaterial({color:0x202820, shininess:35});
+                const accent = new THREE.MeshPhongMaterial({color:0x9b8657, shininess:65});
+                const handle = new THREE.Mesh(new THREE.BoxGeometry(0.13,0.12,0.62),dark); handle.position.set(0,0,0.29); gun.add(handle);
+                const scale = new THREE.Mesh(new THREE.BoxGeometry(0.018,0.125,0.50),accent); scale.position.set(0.071,0,0.29); gun.add(scale);
+                const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.075,12,8),dark); pommel.scale.set(1,0.8,0.55); pommel.position.z=0.61; gun.add(pommel);
+                const pivot = new THREE.Group(); pivot.position.set(0,0,-0.025); gun.add(pivot);
+                // Клинок по длине рукояти: при повороте на 180° целиком уходит внутрь неё.
+                const blade = new THREE.Mesh(new THREE.BoxGeometry(0.045,0.055,0.48),steel); blade.position.z=-0.24; pivot.add(blade);
+                const tip = new THREE.Mesh(new THREE.ConeGeometry(0.028,0.14,4),steel); tip.rotation.x=-Math.PI/2; tip.position.z=-0.52; pivot.add(tip);
+                const spine = new THREE.Mesh(new THREE.BoxGeometry(0.012,0.012,0.33),accent); spine.position.set(0,0.033,-0.23); pivot.add(spine);
+                const pivotPin = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.025,16),accent); pivotPin.rotation.z=Math.PI/2; pivotPin.position.set(0,0,0); gun.add(pivotPin);
+                gun.userData.isStiletto = true; gun.userData.stilettoBlade = pivot;
+            } else if (type === 'butterfly_knife') {
+                const steel = new THREE.MeshPhongMaterial({color:0xcbd5dc, shininess:100, specular:0xffffff});
+                const dark = new THREE.MeshPhongMaterial({color:0x252b30});
+                const blade = new THREE.Mesh(new THREE.BoxGeometry(0.045,0.07,0.43), steel);
+                blade.position.set(0,0.035,-0.28); gun.add(blade);
+                const tip = new THREE.Mesh(new THREE.ConeGeometry(0.035,0.13,4), steel);
+                tip.rotation.x=-Math.PI/2; tip.position.set(0,0.035,-0.55); gun.add(tip);
+                gun.remove(blade);
+                const bladePivot = new THREE.Group(); bladePivot.position.set(0,0.035,-0.10); blade.position.z=-0.18; bladePivot.add(blade); tip.position.z=-0.45; bladePivot.add(tip); gun.add(bladePivot);
+                const handles = [];
+                [-1,1].forEach((side)=>{const pivot=new THREE.Group();pivot.position.set(side*0.055,0,-0.02);const h=new THREE.Mesh(new THREE.BoxGeometry(0.055,0.075,0.38),dark);h.position.z=0.12;pivot.add(h);pivot.rotation.x=side*0.12;pivot.userData.side=side;pivot.userData.restX=side*0.12;gun.add(pivot);handles.push(pivot);});
+                gun.userData.isButterfly = true;
+                gun.userData.butterflyHandles = handles;
+            } else if (type === 'karambit') {
+                const spinPivot = new THREE.Group();
+                const steel = new THREE.MeshPhongMaterial({color:0xd5dce0, shininess:105, specular:0xffffff});
+                const dark = new THREE.MeshPhongMaterial({color:0x252a25, shininess:45});
+                // Крюкообразный клинок из плавной дуги.
+                const pts = [new THREE.Vector3(0,0,-0.05), new THREE.Vector3(0,0.10,-0.30), new THREE.Vector3(0,0.20,-0.52), new THREE.Vector3(0,0.16,-0.72), new THREE.Vector3(0,0.02,-0.78)];
+                const curve = new THREE.CatmullRomCurve3(pts);
+                const blade = new THREE.Mesh(new THREE.TubeGeometry(curve,28,0.035,8,false),steel); spinPivot.add(blade);
+                const handle = new THREE.Mesh(new THREE.BoxGeometry(0.10,0.085,0.34),dark); handle.position.z=0.19; spinPivot.add(handle);
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.085,0.022,8,20),dark); ring.position.set(0,0,0.42); spinPivot.add(ring);
+                const guard = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.045,0.06),dark); guard.position.z=0.015; spinPivot.add(guard);
+                gun.add(spinPivot); gun.userData.karambitSpinPivot = spinPivot;
+            } else if (type === 'm9_bayonet') {
+                const spinPivot = new THREE.Group();
+                const steel = new THREE.MeshPhongMaterial({color:0xd4d9dc, shininess:90});
+                const blade = new THREE.Mesh(new THREE.BoxGeometry(0.075,0.055,0.78),steel); blade.position.z=-0.34; spinPivot.add(blade);
+                const tip = new THREE.Mesh(new THREE.ConeGeometry(0.052,0.18,4),steel); tip.rotation.x=-Math.PI/2; tip.position.z=-0.82; spinPivot.add(tip);
+                const guard = new THREE.Mesh(new THREE.BoxGeometry(0.22,0.07,0.08),new THREE.MeshPhongMaterial({color:0x333333})); spinPivot.add(guard);
+                const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.06,0.3,8),new THREE.MeshPhongMaterial({color:0x292d25})); grip.rotation.x=Math.PI/2; grip.position.z=0.2; spinPivot.add(grip);
+                gun.add(spinPivot);
+                gun.userData.m9SpinPivot = spinPivot;
+            } else if (type === 'knife') {
+                const b = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, 0.6), new THREE.MeshPhongMaterial({color: 0xcccccc}));
+                const h = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.25), new THREE.MeshPhongMaterial({color: 0x442200}));
+                h.position.z = 0.4; gun.add(b); gun.add(h);
+            } else if (type === 'sniper') {
+                const metal = new THREE.MeshPhongMaterial({color:0x303a35, shininess:65});
+                const wood = new THREE.MeshPhongMaterial({color:0x76583a});
+                const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.075,0.075,1.55),metal); barrel.position.z=-0.28; gun.add(barrel);
+                const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.16,0.17,0.62),metal); receiver.position.z=0.12; gun.add(receiver);
+                const stock = new THREE.Mesh(new THREE.BoxGeometry(0.13,0.2,0.62),wood); stock.position.set(0,-0.035,0.67); gun.add(stock);
+                const grip = new THREE.Mesh(new THREE.BoxGeometry(0.095,0.25,0.16),wood); grip.position.set(0,-0.19,0.25); gun.add(grip);
+                const mag = new THREE.Mesh(new THREE.BoxGeometry(0.09,0.24,0.16),metal); mag.position.set(0,-0.19,-0.02); gun.add(mag);
+                const scopeBody = new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.075,0.48,12),metal); scopeBody.rotation.x=Math.PI/2; scopeBody.position.set(0,0.16,0.02); gun.add(scopeBody);
+                [-0.19,0.22].forEach(z=>{const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.095,0.095,0.055,12),new THREE.MeshPhongMaterial({color:0x111713}));ring.rotation.x=Math.PI/2;ring.position.set(0,0.16,z);gun.add(ring);});
+                const bolt = new THREE.Group(); const boltHandle=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,0.2,8),metal); boltHandle.position.set(0.12,0.02,0.13); bolt.add(boltHandle); gun.add(bolt); gun.userData.sniperBolt=bolt;
+            } else if (type === 'rifle') {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.9), new THREE.MeshPhongMaterial({color: col}));
+                gun.add(body);
+                const mag = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.15), new THREE.MeshPhongMaterial({color: 0x111111}));
+                mag.position.set(0, -0.2, 0); gun.add(mag);
+            } else if (type === 'ak47') {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, 1.0), new THREE.MeshPhongMaterial({color: 0x222222}));
+                gun.add(body);
+                const stock = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.22, 0.4), new THREE.MeshPhongMaterial({color: 0x5d4037}));
+                stock.position.set(0, -0.05, 0.6); gun.add(stock);
+                const mag = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.35, 0.12), new THREE.MeshPhongMaterial({color: 0x111111}));
+                mag.position.set(0, -0.2, -0.1); mag.rotation.x = -0.3; gun.add(mag);
+                const wood = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.12, 0.35), new THREE.MeshPhongMaterial({color: 0x5d4037}));
+                wood.position.set(0, -0.08, -0.2); gun.add(wood);
+            } else if (type === 'bazooka') {
+                const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.2, 16), new THREE.MeshPhongMaterial({color: 0x2e4a11}));
+                tube.rotation.x = Math.PI / 2;
+                gun.add(tube);
+                const wideBore = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.13, 0.3, 16), new THREE.MeshPhongMaterial({color: 0x1a1a1a}));
+                wideBore.rotation.x = Math.PI / 2;
+                wideBore.position.z = -0.7;
+                gun.add(wideBore);
+                const grip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.12), new THREE.MeshPhongMaterial({color: 0x111111}));
+                grip.position.set(0, -0.22, 0.15);
+                gun.add(grip);
+                const scope = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.3), new THREE.MeshPhongMaterial({color: 0x111111}));
+                scope.position.set(0, 0.18, 0.2);
+                gun.add(scope);
+                const rocket = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.35, 12), new THREE.MeshPhongMaterial({color: 0xcc2222}));
+                rocket.rotation.x = -Math.PI / 2;
+                rocket.position.z = 0.72;
+                gun.add(rocket);
+            } else {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.5), new THREE.MeshPhongMaterial({color: col}));
+                gun.add(body);
+                const handle = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.12), new THREE.MeshPhongMaterial({color: 0x111111}));
+                handle.position.set(0, -0.15, 0.1); gun.add(handle);
+            }
+            // Окрашиваем геометрию выбранным скином, не меняя тип оружия и его игровые характеристики.
+            if (skin) {
+                gun.traverse(part => {
+                    if (!part.isMesh || !part.material) return;
+                    part.material = part.material.clone();
+                    const originalHex = part.material.color ? part.material.color.getHex() : 0xffffff;
+                    // Ручки, магазины и тёмные детали остаются контрастными;
+                    // цвет скина покрывает корпус оружия, как окраска, а не перекрашивает всё целиком.
+                    if (originalHex > 0x292929 && originalHex !== 0x442200 && originalHex !== 0x5d4037) {
+                        part.material.color.set(skin.color);
+                        if ('emissive' in part.material) {
+                            part.material.emissive.set(skin.color);
+                            part.material.emissiveIntensity = 0.08;
+                        }
+                    }
+                });
+                gun.userData.skinId = skin.id;
+            }
+            return gun;
+        }
+
+        function updateHatMesh(model, hatId, transforms) {
+            if (!model || !model.userData.headGroup) return;
+            const t = transforms || (model === playerModel || model === menuChicken || model === shopChicken ? itemTransforms.hat : null);
+            // Default helmet stays on the chicken, but is hidden whenever a purchased hat is equipped.
+            let helmet = model.userData.defaultHelmetGroup;
+            if (!helmet) {
+                helmet = new THREE.Group();
+                model.userData.headGroup.add(helmet);
+                model.userData.defaultHelmetGroup = helmet;
+                const shell = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.52, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+                    new THREE.MeshPhongMaterial({color: 0x53613a})
+                );
+                shell.position.y = 0.24;
+                helmet.add(shell);
+                const brim = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.55, 0.55, 0.09, 24),
+                    new THREE.MeshPhongMaterial({color: 0x39452b})
+                );
+                brim.position.y = 0.22;
+                helmet.add(brim);
+                const front = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.48, 0.07, 0.24),
+                    new THREE.MeshPhongMaterial({color: 0x39452b})
+                );
+                front.position.set(0, 0.25, 0.39);
+                helmet.add(front);
+                // Keep the default helmet at its larger size, but lower it slightly on the chicken.
+                helmet.scale.set(1.22, 1.22, 1.22);
+                helmet.position.y = 0.04;
+            }
+            helmet.visible = !hatId || hatId === 'none';
+
+            let g = model.userData.hatGroup;
+            if (!g) { g = new THREE.Group(); model.userData.headGroup.add(g); model.userData.hatGroup = g; }
+            g.clear();
+            if (t) {
+                g.position.set(t.x, t.y, t.z);
+                g.scale.set(t.s, t.s, t.s);
+                g.rotation.y = t.ry;
+            } else {
+                g.position.set(0, 0.5, 0);
+                g.scale.set(1, 1, 1);
+                g.rotation.y = 0;
+            }
+            if (hatId === 'classic') {
+                const b = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.05, 16), new THREE.MeshPhongMaterial({color: 0x111111}));
+                const t = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.4, 16), new THREE.MeshPhongMaterial({color: 0x111111}));
+                t.position.y = 0.2; g.add(b); g.add(t);
+            } else if (hatId === 'cap') {
+                const c = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 8, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshPhongMaterial({color: 0x0000ff}));
+                const v = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.4), new THREE.MeshPhongMaterial({color: 0x0000ff}));
+                v.position.set(0, 0, 0.3); g.add(c); g.add(v);
+            } else if (hatId === 'panama' || hatId === 'black_panama') {
+                const col = hatId === 'black_panama' ? 0x111111 : 0xddaa66;
+                const c = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 0.3, 16), new THREE.MeshPhongMaterial({color: col}));
+                const v = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.05, 16), new THREE.MeshPhongMaterial({color: col}));
+                v.position.y = -0.15; g.add(c); g.add(v);
+                g.position.y = 0.65;
+            } else if (hatId === 'winter') {
+                const cap = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12, 0, Math.PI*2, 0, Math.PI/1.8), new THREE.MeshPhongMaterial({color: 0x00aaff}));
+                const pompon = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshPhongMaterial({color: 0xffffff}));
+                pompon.position.y = 0.45; g.add(cap); g.add(pompon);
+            } else if (hatId === 'military') {
+                const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.42, 0.25, 16), new THREE.MeshPhongMaterial({color: 0x2e4a11}));
+                const peak = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 0.3), new THREE.MeshPhongMaterial({color: 0x111111}));
+                peak.position.set(0, -0.1, 0.25); peak.rotation.x = 0.2; g.add(cap); g.add(peak);
+            } else if (hatId === 'propeller_cap') {
+                const c = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 8, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshPhongMaterial({color: 0xff0000}));
+                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15), new THREE.MeshPhongMaterial({color: 0xcccccc}));
+                stem.position.y = 0.35;
+                const prop = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.08), new THREE.MeshPhongMaterial({color: 0xffff00}));
+                prop.position.y = 0.42; prop.userData.isPropeller = true;
+                g.add(c); g.add(stem); g.add(prop);
+            } else if (hatId === 'sailor_hat') {
+                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.35, 0.15, 16), new THREE.MeshPhongMaterial({color: 0xffffff}));
+                const top = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.4, 0.05, 16), new THREE.MeshPhongMaterial({color: 0xffffff}));
+                top.position.y = 0.1;
+                const ribbon = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.41, 0.05, 16), new THREE.MeshPhongMaterial({color: 0x000088}));
+                g.add(base); g.add(top); g.add(ribbon);
+            } else if (hatId === 'sheriff_hat') {
+                const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.05, 16), new THREE.MeshPhongMaterial({color: 0x5d4037}));
+                const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.35, 16), new THREE.MeshPhongMaterial({color: 0x5d4037}));
+                crown.position.y = 0.2;
+                const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.1), new THREE.MeshPhongMaterial({color: 0xffde00}));
+                star.position.set(0, 0.2, 0.32); star.scale.z = 0.2;
+                g.add(brim); g.add(crown); g.add(star);
+            }
+        }
+
+        function updateGlassMesh(model, id, transforms) {
+            if (!model || !model.userData.headGroup) return;
+            const t = transforms || (model === playerModel || model === menuChicken || model === shopChicken ? itemTransforms.glass : null);
+            let g = model.userData.glassGroup;
+            if (!g) { g = new THREE.Group(); model.userData.headGroup.add(g); model.userData.glassGroup = g; }
+            g.clear();
+            if (t) {
+                g.position.set(t.x, t.y, t.z);
+                g.scale.set(t.s, t.s, t.s);
+                g.rotation.y = t.ry;
+            } else {
+                g.position.set(0, 0.15, 0.48);
+                g.scale.set(1, 1, 1);
+                g.rotation.y = 0;
+            }
+            if (id === 'normal' || id === 'sun' || id === 'pro') {
+                const col = id === 'sun' ? 0x111111 : (id === 'pro' ? 0x222222 : 0x88ccff);
+                const gl = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.02), new THREE.MeshPhongMaterial({color: col, transparent: true, opacity: 0.8}));
+                const gr = gl.clone(); gl.position.x = 0.18; gr.position.x = -0.18;
+                const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.02), new THREE.MeshPhongMaterial({color: 0x222222}));
+                if (id === 'pro') {
+                    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.04, 0.04), new THREE.MeshPhongMaterial({color: 0xffde00}));
+                    frame.position.y = 0.08; g.add(frame);
+                }
+                g.add(gl); g.add(gr); g.add(bridge);
+            } else if (id === 'laser') {
+                const visor = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.12, 0.05), new THREE.MeshPhongMaterial({color: 0x111111}));
+                const laser = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.04, 0.06), new THREE.MeshBasicMaterial({color: 0xff0000}));
+                laser.position.z = 0.02; g.add(visor); g.add(laser);
+            } else if (id === 'star_glasses') {
+                const starGeo = new THREE.OctahedronGeometry(0.15);
+                const mat = new THREE.MeshPhongMaterial({color: 0xffde00});
+                const l = new THREE.Mesh(starGeo, mat); l.position.x = 0.18;
+                const r = new THREE.Mesh(starGeo, mat); r.position.x = -0.18;
+                g.add(l); g.add(r);
+            } else if (id === 'green_glasses') {
+                const gl = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.02), new THREE.MeshPhongMaterial({color: 0x00ff00, transparent: true, opacity: 0.6}));
+                const gr = gl.clone(); gl.position.x = 0.18; gr.position.x = -0.18;
+                const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.02), new THREE.MeshPhongMaterial({color: 0x111111}));
+                g.add(gl); g.add(gr); g.add(bridge);
+            }
+        }
+
+        function updateBeakMesh(model, id, transforms) {
+            if (!model || !model.userData.headGroup) return;
+            const t = transforms || (model === playerModel || model === menuChicken || model === shopChicken ? itemTransforms.beak : null) || { x:0, y:-0.05, z:0.4, s:1, rx:0, ry:0, rz:0 };
+            const b = model.userData.beakMesh; if(!b) return;
+            
+            const apply = (obj, baseScale = {x:1, y:1, z:1}) => {
+                obj.position.set(t.x, t.y, t.z);
+                obj.scale.set(baseScale.x * t.s, baseScale.y * t.s, baseScale.z * t.s);
+                obj.rotation.set(t.rx || 0, t.ry || 0, t.rz || 0);
+            };
+
+            b.visible = (id !== 'beard' && id !== 'gas_mask' && id !== 'mustache');
+            if (b.visible) {
+                let bs = {x:1, y:1, z:1};
+                if (id === 'large') { bs = {x:1.5, y:1.2, z:2}; b.material.color.set(0xff8800); }
+                else if (id === 'long') { bs = {x:0.8, y:0.8, z:3.5}; b.material.color.set(0xffa500); }
+                else if (id === 'small') { bs = {x:0.6, y:0.6, z:0.6}; b.material.color.set(0xffa500); }
+                else b.material.color.set(0xffa500);
+                apply(b, bs);
+            }
+
+            if (id === 'beard') {
+                if (!model.userData.beardMesh) {
+                    model.userData.beardMesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.2), new THREE.MeshPhongMaterial({color: 0x111111}));
+                    model.userData.headGroup.add(model.userData.beardMesh);
+                }
+                apply(model.userData.beardMesh);
+                model.userData.beardMesh.visible = true;
+            } else if (model.userData.beardMesh) model.userData.beardMesh.visible = false;
+
+            // Противогаз убран с модели цыплёнка.
+            if (model.userData.gasMask) model.userData.gasMask.visible = false;
+
+            if (id === 'mustache') {
+                if (!model.userData.mustacheMesh) {
+                    const m = new THREE.Group();
+                    const left = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.1, 0.05), new THREE.MeshPhongMaterial({color: 0x111111}));
+                    const right = left.clone();
+                    left.position.x = 0.12; left.rotation.z = -0.2;
+                    right.position.x = -0.12; right.rotation.z = 0.2;
+                    m.add(left); m.add(right);
+                    model.userData.headGroup.add(m);
+                    model.userData.mustacheMesh = m;
+                }
+                apply(model.userData.mustacheMesh);
+                model.userData.mustacheMesh.visible = true;
+            } else if (model.userData.mustacheMesh) model.userData.mustacheMesh.visible = false;
+        }
+
+        function updateBootMesh(model, id) {
+            if (!model || !model.userData.leftLeg || !model.userData.rightLeg) return;
+            const t = itemTransforms.boot || { x:0, y:-0.25, z:0.15, s:1, rx:0, ry:0, rz:0 };
+            
+            [model.userData.leftLeg, model.userData.rightLeg].forEach((leg) => {
+                let bootCont = leg.userData.bootContainer;
+                if (!bootCont) {
+                    bootCont = new THREE.Group();
+                    leg.add(bootCont);
+                    leg.userData.bootContainer = bootCont;
+                }
+                bootCont.clear();
+                bootCont.position.set(t.x, t.y, t.z);
+                bootCont.scale.set(t.s, t.s, t.s);
+                bootCont.rotation.set(t.rx || 0, t.ry || 0, t.rz || 0);
+
+                if (id === 'classic' || id === 'galoshes' || id === 'shoes' || id === 'red_shoes' || id === 'green_shoes' || id === 'white_boots') {
+                    let col = 0x221100;
+                    if (id === 'galoshes') col = 0x004411;
+                    else if (id === 'shoes') col = 0x111111;
+                    else if (id === 'red_shoes') col = 0x880000;
+                    else if (id === 'green_shoes') col = 0x008800;
+                    else if (id === 'white_boots') col = 0xeeeeee;
+
+                    const shoe = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.35, 0.22, 0.5), 
+                        new THREE.MeshPhongMaterial({color: col})
+                    );
+                    bootCont.add(shoe);
+                    if (id === 'shoes') {
+                        const heel = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.1, 0.15), new THREE.MeshPhongMaterial({color: 0x000000}));
+                        heel.position.set(0, -0.1, -0.15); shoe.add(heel);
+                    }
+                }
+            });
+        }
+
+        function updateBackpackMesh(model, id) {
+            if (!model || !model.userData.headGroup) return;
+            let b = model.userData.backpackGroup;
+            if (!b) {
+                b = new THREE.Group();
+                model.userData.headGroup.add(b);
+                model.userData.backpackGroup = b;
+            }
+            b.clear();
+            const t = itemTransforms.backpack || { x:0, y:0, z:-0.5, s:1, rx:0, ry:0, rz:0 };
+            b.position.set(t.x, t.y, t.z);
+            b.scale.set(t.s, t.s, t.s);
+            b.rotation.set(t.rx || 0, t.ry || 0, t.rz || 0);
+
+            if (id !== 'none' && id.includes('_backpack')) {
+                const colorMap = {
+                    'red': 0xff0000, 'green': 0x00ff00, 'blue': 0x0000ff, 'lightblue': 0x00aaff,
+                    'black': 0x111111, 'white': 0xeeeeee, 'yellow': 0xffff00, 'orange': 0xff8800,
+                    'darkred': 0x880000, 'darkgreen': 0x008800, 'darkblue': 0x000088, 'darklightblue': 0x005588,
+                    'darkblack': 0x000000, 'darkwhite': 0x999999, 'darkyellow': 0x888800, 'darkorange': 0x884400
+                };
+                const colorKey = id.replace('_backpack', '');
+                const box = new THREE.Mesh(
+                    new RoundedBoxGeometry(0.7, 0.9, 0.4, 2, 0.1),
+                    new THREE.MeshPhongMaterial({color: colorMap[colorKey] || 0x888888})
+                );
+                b.add(box);
+                const strapL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 0.05), new THREE.MeshPhongMaterial({color: 0x333333}));
+                strapL.position.set(0.3, 0, 0.2); b.add(strapL);
+                const strapR = strapL.clone(); strapR.position.x = -0.3; b.add(strapR);
+            }
+        }
+
+        function createChickenModel(withWeapon = true, withUI = true) {
+            const chicken = new THREE.Group();
+            const offset = 0.5;
+            const headGroup = new THREE.Group();
+            headGroup.position.y = offset + 0.4; chicken.add(headGroup);
+            chicken.userData.headGroup = headGroup;
+
+            const body = new THREE.Mesh(new RoundedBoxGeometry(1.0, 1.0, 0.9, 4, 0.15), new THREE.MeshPhongMaterial({color: 0xffffff}));
+            body.castShadow = true; headGroup.add(body);
+            
+            const beak = new THREE.Mesh(new RoundedBoxGeometry(0.2, 0.18, 0.25, 2, 0.1), new THREE.MeshPhongMaterial({color: 0xffa500}));
+            beak.position.set(0, -0.05, 0.4); headGroup.add(beak);
+            chicken.userData.beakMesh = beak;
+            
+            const comb = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.3, 0.45, 2, 0.1), new THREE.MeshPhongMaterial({color: 0xff0000}));
+            comb.position.y = 0.45; headGroup.add(comb);
+            
+            const eyeGeo = new RoundedBoxGeometry(0.15, 0.15, 0.05, 1, 0.02);
+            const leftEye = new THREE.Mesh(eyeGeo, new THREE.MeshPhongMaterial({color: 0}));
+            leftEye.position.set(0.18, 0.15, 0.45); headGroup.add(leftEye);
+            const rightEye = leftEye.clone(); rightEye.position.x = -0.18; headGroup.add(rightEye);
+
+            const legGeo = new RoundedBoxGeometry(0.22, 0.45, 0.22, 2, 0.1);
+            const legMat = new THREE.MeshPhongMaterial({color: 0xffa500});
+            const leftLeg = new THREE.Mesh(legGeo, legMat); leftLeg.position.set(0.25, 0.225, 0); chicken.add(leftLeg);
+            const rightLeg = new THREE.Mesh(legGeo, legMat); rightLeg.position.set(-0.25, 0.225, 0); chicken.add(rightLeg);
+            chicken.userData.leftLeg = leftLeg; chicken.userData.rightLeg = rightLeg;
+
+            const tail = new THREE.Mesh(new RoundedBoxGeometry(0.45, 0.3, 0.2, 2, 0.1), new THREE.MeshPhongMaterial({color: 0xffffff}));
+            tail.position.set(0, -0.1, -0.55); tail.rotation.x = 0.4; headGroup.add(tail);
+
+            const wingGeo = new RoundedBoxGeometry(0.1, 0.6, 0.4, 2, 0.05);
+            const leftWing = new THREE.Mesh(wingGeo, new THREE.MeshPhongMaterial({color: 0xeeeeee}));
+            leftWing.position.set(-0.55, 0, 0); headGroup.add(leftWing);
+            const rightWing = leftWing.clone(); rightWing.position.x = 0.55; headGroup.add(rightWing);
+            chicken.userData.weaponHand = rightWing;
+
+            // Убраны встроенные тактические аксессуары: шлем/экипировка не перекрывают купленные предметы.
+
+            if (withWeapon) {
+                const gun = createWeaponModel('pistol');
+                gun.position.set(0.1, -0.2, 0.4); 
+                gun.rotation.y = Math.PI;
+                rightWing.add(gun);
+                chicken.userData.weaponGroup = gun;
+                
+                if (withUI) {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 256; canvas.height = 64;
+                    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px Arial'; ctx.textAlign = 'center';
+                    ctx.fillText('', 128, 45);
+                    const nameTex = new THREE.CanvasTexture(canvas);
+                    const nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({map: nameTex}));
+                    nameSprite.position.y = offset + 1.5; nameSprite.scale.set(1.5, 0.4, 1);
+                    nameSprite.userData.isNameTag = true;
+                    chicken.add(nameSprite);
+
+                    const hpBarGroup = new THREE.Group();
+                    const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.12), new THREE.MeshBasicMaterial({color: 0x000000}));
+                    const hpRed = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.12), new THREE.MeshBasicMaterial({color: 0xff3333}));
+                    hpRed.position.z = 0.01; hpBarGroup.add(hpBg); hpBarGroup.add(hpRed);
+                    hpBarGroup.position.y = offset + 1.25; hpBarGroup.userData.isHPBar = true; chicken.add(hpBarGroup);
+                    chicken.userData.hpRed = hpRed; chicken.userData.hp = 100;
+                }
+            }
+            chicken.userData.velocityV = 0;
+            return chicken;
+        }
+
+        const playerWeapon = new THREE.Group();
+        playerWeapon.add(createWeaponModel(currentWeapon, equippedWeaponSkins[currentWeapon] || null));
+        // Рука в первом лице поменьше
+        const playerHand = new THREE.Mesh(new RoundedBoxGeometry(0.15, 0.3, 0.6, 4, 0.05), new THREE.MeshPhongMaterial({color: 0xffffff}));
+        playerHand.position.set(-0.12, -0.15, 0.1);
+        playerWeapon.add(playerHand);
+        // Вторая рука поддерживает цевьё снайперки; первая работает затвором.
+        const supportHand = new THREE.Mesh(new RoundedBoxGeometry(0.14, 0.27, 0.48, 4, 0.05), new THREE.MeshPhongMaterial({color: 0xffffff}));
+        supportHand.position.set(0.10, -0.19, -0.48);
+        supportHand.rotation.x = -0.18;
+        supportHand.visible = false;
+        playerWeapon.add(supportHand);
+        playerHand.userData.basePosition = playerHand.position.clone();
+        supportHand.userData.basePosition = supportHand.position.clone();
+        scene.add(playerWeapon);
+
+        // Перестраиваем только модель оружия, сохраняя руку первого лица.
+        function setFirstPersonWeapon(type, skinId = null) {
+            playerWeapon.clear();
+            const firstPersonGun = createWeaponModel(type, skinId || equippedWeaponSkins[type] || null);
+            playerWeapon.add(firstPersonGun);
+            playerWeapon.userData.sniperBolt = firstPersonGun.userData.sniperBolt || null;
+            // Передаём pivot M9 на уровень playerWeapon: именно его читает цикл осмотра.
+            playerWeapon.userData.m9SpinPivot = firstPersonGun.userData.m9SpinPivot || null;
+            playerWeapon.userData.karambitSpinPivot = firstPersonGun.userData.karambitSpinPivot || null;
+            playerWeapon.add(playerHand);
+            playerWeapon.add(supportHand);
+            supportHand.visible = type === 'sniper';
+            playerHand.position.copy(playerHand.userData.basePosition);
+            supportHand.position.copy(supportHand.userData.basePosition);
+        }
+
+        // Одна и та же модель оружия используется в третьем лице и у сетевых игроков.
+        function setChickenWeapon(model, type, skinId = null) {
+            if (!model || !model.userData.headGroup) return;
+            type = type || 'pistol';
+            // Всегда берём именно крыло-руку персонажа, а не случайный объект головы.
+            const wing = model.userData.weaponHand;
+            if (!wing) return;
+            const oldGun = model.userData.weaponGroup;
+            if (oldGun) {
+                oldGun.parent?.remove(oldGun);
+                oldGun.traverse(part => {
+                    if (part.isMesh && part.material) {
+                        const mats = Array.isArray(part.material) ? part.material : [part.material];
+                        mats.forEach(mat => mat.dispose && mat.dispose());
+                    }
+                });
+            }
+            const gun = createWeaponModel(type, skinId);
+            gun.position.set(0.1, -0.2, 0.4);
+            gun.rotation.set(0, Math.PI, 0);
+            gun.userData.restRotation = gun.rotation.clone();
+            gun.userData.restPosition = gun.position.clone();
+            gun.userData.weaponType = type;
+            gun.userData.skinId = skinId || null;
+            wing.add(gun);
+            model.userData.weaponGroup = gun;
+            model.userData.currentWeapon = type;
+            model.userData.currentWeaponSkin = skinId || null;
+        }
+
+        function applyWeaponState(model, type, skinId, alive = true) {
+            if (!model) return;
+            type = type || 'pistol';
+            skinId = skinId || null;
+            if (model.userData.currentWeapon !== type || model.userData.currentWeaponSkin !== skinId || !model.userData.weaponGroup) {
+                setChickenWeapon(model, type, skinId);
+            }
+            if (model.userData.weaponGroup) model.userData.weaponGroup.visible = alive;
+        }
+
+        function applyLocalWeaponState() {
+            const skinId = equippedWeaponSkins[currentWeapon] || null;
+            setFirstPersonWeapon(currentWeapon, skinId);
+            applyWeaponState(playerModel, currentWeapon, skinId, health > 0);
+            if (database && currentRoomId && myPlayerId && isPlaying) syncNetwork();
+        }
+
+        playerModel = createChickenModel(true);
+        setChickenWeapon(playerModel, currentWeapon, equippedWeaponSkins[currentWeapon] || null);
+        playerModel.userData.camMode = 0;
+        playerModel.visible = false;
+        scene.add(playerModel);
+        updateHatMesh(playerModel, currentHat);
+
+        const menuChicken = createChickenModel(false);
+        menuChicken.position.set(0, 0.1, -3); 
+        scene.add(menuChicken);
+        updateHatMesh(menuChicken, currentHat);
+
+        playBtn.addEventListener('click', () => { startFromModal(10, 20); });
+        const settingsModal = document.getElementById('settings-modal');
+        const mobileControls = document.getElementById('mobile-controls');
+        const mobileToggle = document.getElementById('mobile-controls-toggle');
+        const touchSensitivity = document.getElementById('touch-sensitivity');
+        const handCameraDistance = document.getElementById('hand-camera-distance');
+        const handDistanceValue = document.getElementById('hand-distance-value');
+        let handDistance = Number(localStorage.getItem('cg_hand_camera_distance') || 0.50);
+        if (!Number.isFinite(handDistance)) handDistance = 0.50;
+        handDistance = Math.max(0.20, Math.min(1.40, handDistance));
+        handCameraDistance.value = String(handDistance);
+        handDistanceValue.textContent = handDistance.toFixed(2);
+        handCameraDistance.addEventListener('input', () => {
+            handDistance = Number(handCameraDistance.value);
+            handDistanceValue.textContent = handDistance.toFixed(2);
+            localStorage.setItem('cg_hand_camera_distance', String(handDistance));
+        });
+        const crosshairShape = document.getElementById('crosshair-shape');
+        const crosshairEl = document.getElementById('crosshair');
+        const savedCrosshair = localStorage.getItem('cg_crosshair_shape') || 'circle';
+        crosshairShape.value = savedCrosshair;
+        crosshairEl.classList.toggle('square', savedCrosshair === 'square');
+        crosshairShape.addEventListener('change', () => {
+            crosshairEl.classList.toggle('square', crosshairShape.value === 'square');
+            localStorage.setItem('cg_crosshair_shape', crosshairShape.value);
+        });
+        const controlsEditor = document.getElementById('controls-editor');
+        const editableTouchControls = ['touch-stick','touch-fire','touch-jump','touch-reload','touch-inspect','touch-weapons','touch-emotions','touch-pause','touch-scope'].map(id => document.getElementById(id));
+        const controlsLayoutKey = 'cg_mobile_controls_layout_v1';
+        function applyTouchControlLayout() {
+            let layout = {}; try { layout = JSON.parse(localStorage.getItem(controlsLayoutKey) || '{}') || {}; } catch (_) {}
+            editableTouchControls.forEach(el => {
+                const pos = layout[el.id];
+                if (pos && Number.isFinite(pos.left) && Number.isFinite(pos.top)) {
+                    el.style.left = pos.left + 'px'; el.style.top = pos.top + 'px';
+                    el.style.right = 'auto'; el.style.bottom = 'auto';
+                }
+                if (pos && Number.isFinite(pos.width) && Number.isFinite(pos.height)) {
+                    el.style.width = pos.width + 'px'; el.style.height = pos.height + 'px';
+                    if (Number.isFinite(pos.fontSize)) el.style.fontSize = pos.fontSize + 'px';
+                }
+            });
+        }
+        applyTouchControlLayout();
+        document.getElementById('customize-controls-btn').addEventListener('click', () => {
+            settingsModal.style.display = 'none'; controlsEditor.style.display = 'block';
+            mobileControls.classList.add('enabled');
+            document.getElementById('touch-look-area').style.pointerEvents = 'none';
+            editableTouchControls.forEach(el => { el.style.zIndex = '1002'; el.style.outline = '2px dashed #ffe34d'; el.style.touchAction = 'none'; });
+        });
+        let draggedControl = null, dragOffsetX = 0, dragOffsetY = 0;
+        const controlPointers = new Map();
+        let selectedSizeControl = null;
+        const sizePanel = document.createElement('div');
+        sizePanel.id = 'control-size-panel';
+        sizePanel.style.cssText = 'display:none;position:absolute;z-index:1100;background:#182219;border:2px solid #d6c83c;border-radius:12px;padding:10px 12px;width:190px;box-shadow:0 4px 16px #000a;touch-action:pan-y';
+        sizePanel.innerHTML = '<div style="font-weight:bold;font-size:13px;margin-bottom:6px">РАЗМЕР КНОПКИ <span id="control-size-value">100%</span></div><input id="control-size-slider" type="range" min="42" max="180" step="2" value="80" style="width:100%;accent-color:#e6d447">';
+        controlsEditor.appendChild(sizePanel);
+        const sizeSlider = sizePanel.querySelector('#control-size-slider');
+        function showControlSizePanel(el) {
+            selectedSizeControl = el;
+            const r = el.getBoundingClientRect();
+            const width = Math.max(42, Math.min(180, r.width));
+            sizeSlider.value = String(Math.round(width));
+            sizePanel.querySelector('#control-size-value').textContent = Math.round(width / 80 * 100) + '%';
+            sizePanel.style.display = 'block';
+            const panelW = 214, panelH = 76;
+            let left = r.right + 8;
+            if (left + panelW > innerWidth) left = Math.max(8, r.left - panelW - 8);
+            let top = Math.max(70, Math.min(innerHeight - panelH - 70, r.top));
+            sizePanel.style.left = left + 'px'; sizePanel.style.top = top + 'px';
+        }
+        sizeSlider.addEventListener('input', () => {
+            if (!selectedSizeControl) return;
+            const size = Number(sizeSlider.value);
+            selectedSizeControl.style.width = size + 'px';
+            selectedSizeControl.style.height = size + 'px';
+            const baseFont = Number(selectedSizeControl.dataset.baseFont || 16);
+            selectedSizeControl.style.fontSize = Math.max(10, Math.min(36, baseFont * size / 80)) + 'px';
+            sizePanel.querySelector('#control-size-value').textContent = Math.round(size / 80 * 100) + '%';
+        });
+        editableTouchControls.forEach(el => {
+            el.addEventListener('pointerdown', e => {
+                if (controlsEditor.style.display !== 'block') return;
+                e.preventDefault(); e.stopPropagation();
+                if (!controlPointers.has(el)) controlPointers.set(el, new Map());
+                const pts = controlPointers.get(el);
+                pts.set(e.pointerId, {x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,moved:false});
+                try { el.setPointerCapture(e.pointerId); } catch (_) {}
+                if (pts.size === 1) {
+                    draggedControl = el;
+                    const r = el.getBoundingClientRect(); dragOffsetX=e.clientX-r.left; dragOffsetY=e.clientY-r.top;
+                }
+            });
+            el.addEventListener('pointermove', e => {
+                const pts=controlPointers.get(el);
+                if (!pts || !pts.has(e.pointerId) || controlsEditor.style.display !== 'block') return;
+                e.preventDefault(); e.stopPropagation();
+                const old=pts.get(e.pointerId);
+                if (old && Math.hypot(e.clientX-old.startX,e.clientY-old.startY)>7) old.moved=true;
+                pts.set(e.pointerId,{...old,x:e.clientX,y:e.clientY});
+                if (pts.size === 1 && draggedControl === el) {
+                    const maxX=innerWidth-el.offsetWidth,maxY=innerHeight-el.offsetHeight;
+                    el.style.left=Math.max(0,Math.min(maxX,e.clientX-dragOffsetX))+'px';
+                    el.style.top=Math.max(0,Math.min(maxY,e.clientY-dragOffsetY))+'px';
+                    el.style.right='auto'; el.style.bottom='auto';
+                }
+            });
+            const endPointer=e=>{
+                const pts=controlPointers.get(el); if(!pts)return;
+                const ended=pts.get(e.pointerId);
+                if (ended && !ended.moved && controlsEditor.style.display === 'block') showControlSizePanel(el);
+                pts.delete(e.pointerId);
+                if(pts.size===1){const remaining=[...pts.values()][0];draggedControl=el;const r=el.getBoundingClientRect();dragOffsetX=remaining.x-r.left;dragOffsetY=remaining.y-r.top;}
+                else if(pts.size===0){controlPointers.delete(el);if(draggedControl===el)draggedControl=null;}
+            };
+            el.addEventListener('pointerup',endPointer); el.addEventListener('pointercancel',endPointer);
+        });
+        document.getElementById('save-controls-layout').addEventListener('click', () => {
+            const layout = {};
+            editableTouchControls.forEach(el => { const r=el.getBoundingClientRect(); layout[el.id]={left:Math.round(r.left),top:Math.round(r.top),width:Math.round(r.width),height:Math.round(r.height),fontSize:Math.round(parseFloat(getComputedStyle(el).fontSize)||16)}; el.style.outline=''; el.style.zIndex=''; });
+            localStorage.setItem(controlsLayoutKey, JSON.stringify(layout));
+            controlsEditor.style.display='none'; sizePanel.style.display='none'; selectedSizeControl=null; document.getElementById('touch-look-area').style.pointerEvents='auto';
+            syncMobileControls();
+        });
+        let touchLookId = null, touchLookX = 0, touchLookY = 0, stickId = null, stickOrigin = null;
+        let touchMoveX = 0, touchMoveY = 0;
+        document.getElementById('settings-btn').addEventListener('click', () => settingsModal.style.display = 'flex');
+        function syncMobileControls() {
+            mobileControls.classList.toggle('enabled', mobileToggle.checked && isPlaying && matchMedia('(pointer: coarse)').matches);
+        }
+        mobileToggle.addEventListener('change', syncMobileControls);
+        document.getElementById('touch-stick').addEventListener('pointerdown', e => {
+            stickId = e.pointerId; stickOrigin = {x:e.clientX,y:e.clientY}; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) { /* Pointer may already be inactive on some mobile browsers. */ }
+        });
+        document.getElementById('touch-stick').addEventListener('pointermove', e => {
+            if (e.pointerId !== stickId || !stickOrigin) return;
+            const dx = e.clientX-stickOrigin.x, dy=e.clientY-stickOrigin.y, len=Math.max(1,Math.hypot(dx,dy));
+            touchMoveX=Math.max(-1,Math.min(1,dx/55)); touchMoveY=Math.max(-1,Math.min(1,dy/55));
+            moveLeft=touchMoveX<-.2; moveRight=touchMoveX>.2; moveForward=touchMoveY<-.2; moveBackward=touchMoveY>.2;
+        });
+        function releaseStick(e) { if (e.pointerId!==stickId) return; stickId=null; stickOrigin=null; touchMoveX=touchMoveY=0; moveLeft=moveRight=moveForward=moveBackward=false; }
+        document.getElementById('touch-stick').addEventListener('pointerup',releaseStick);
+        document.getElementById('touch-stick').addEventListener('pointercancel',releaseStick);
+        document.getElementById('touch-look-area').addEventListener('pointerdown',e=>{ if(touchLookId!==null)return; touchLookId=e.pointerId; touchLookX=e.clientX; touchLookY=e.clientY; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) { /* Continue tracking at document level if capture is unavailable. */ } });
+        document.addEventListener('pointermove',e=>{
+            if(e.pointerId!==touchLookId || !isPlaying)return;
+            const sens=Number(touchSensitivity.value); camera.rotation.order='YXZ';
+            camera.rotation.y -= (e.clientX-touchLookX)*sens; camera.rotation.x -= (e.clientY-touchLookY)*sens;
+            camera.rotation.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,camera.rotation.x)); touchLookX=e.clientX; touchLookY=e.clientY;
+        });
+        const lookEnd=e=>{if(e.pointerId===touchLookId)touchLookId=null;};
+        document.addEventListener('pointerup',lookEnd);
+        document.addEventListener('pointercancel',lookEnd);
+        document.getElementById('touch-fire').addEventListener('pointerdown',e=>{e.preventDefault(); if(!isPlaying)return; if(!['knife','stiletto','butterfly_knife','m9_bayonet','karambit'].includes(currentWeapon) && (ammo<=0||isReloading))return; if(currentWeapon==='rifle') isShooting=true; else {const d=new THREE.Vector3();camera.getWorldDirection(d);shoot(camera.position,d);} });
+        document.getElementById('touch-fire').addEventListener('pointerup',()=>isShooting=false);
+        document.getElementById('touch-fire').addEventListener('pointercancel',()=>isShooting=false);
+        document.getElementById('touch-jump').addEventListener('pointerdown',e=>{e.preventDefault(); if(canJump){velocity.y+=20;canJump=false;}});
+        document.getElementById('touch-reload').addEventListener('pointerdown',e=>{e.preventDefault(); if(isPlaying && !isReloading && ammo<maxAmmo){startReload();}});
+        function inspectCurrentWeapon() {
+            if (!isPlaying || playerWeapon.userData.inspectUntil > performance.now()) return;
+            playerWeapon.userData.inspectStarted = performance.now();
+            playerHand.userData.baseY = playerHand.position.y;
+            playerWeapon.userData.inspectUntil = performance.now() + (currentWeapon === 'butterfly_knife' ? 1650 : (currentWeapon === 'stiletto' ? 1400 : (currentWeapon === 'm9_bayonet' || currentWeapon === 'karambit' ? 1200 : 1200)));
+            playerWeapon.userData.inspectType = currentWeapon;
+            playerWeapon.userData.inspectVariant = currentWeapon === 'butterfly_knife' ? (Math.random() < 0.5 ? 'flip' : 'toss') : 'flip';
+            // Во второй анимации отделяем только модель ножа от руки.
+            if (playerWeapon.userData.inspectVariant === 'toss') {
+                const knifeModel = playerWeapon.children.find(ch => ch !== playerHand && ch.userData && ch.userData.isButterfly);
+                if (knifeModel) {
+                    knifeModel.updateMatrixWorld(true);
+                    playerWeapon.userData.tossModel = knifeModel;
+                    playerWeapon.userData.tossLocal = {
+                        position: knifeModel.position.clone(),
+                        quaternion: knifeModel.quaternion.clone(),
+                        scale: knifeModel.scale.clone()
+                    };
+                    scene.attach(knifeModel);
+                    playerWeapon.userData.tossStartPosition = knifeModel.position.clone();
+                    playerWeapon.userData.tossStartQuaternion = knifeModel.quaternion.clone();
+                    // Запоминаем положение относительно камеры: подброшенный нож
+                    // остаётся рядом с игроком даже во время ходьбы и поворотов.
+                    camera.updateMatrixWorld(true);
+                    playerWeapon.userData.tossCameraOffset = camera.worldToLocal(knifeModel.position.clone());
+                }
+            }
+            playerWeapon.userData.networkAction = 'inspect';
+            playerWeapon.userData.networkActionVariant = playerWeapon.userData.inspectVariant;
+            playerWeapon.userData.networkActionDuration = playerWeapon.userData.inspectUntil - playerWeapon.userData.inspectStarted;
+            playerWeapon.userData.networkActionAt = Date.now();
+            if (database && currentRoomId && myPlayerId) syncNetwork();
+        }
+        document.getElementById('touch-inspect').addEventListener('pointerdown',e=>{e.preventDefault();inspectCurrentWeapon();});
+
+        document.addEventListener('keydown', e => { if (e.code === 'KeyV' && !e.repeat) inspectCurrentWeapon(); });
+        document.getElementById('touch-weapons').addEventListener('click', e => { e.preventDefault(); if (isPlaying) document.dispatchEvent(new KeyboardEvent('keydown', {code:'KeyE'})); });
+        document.getElementById('touch-emotions').addEventListener('click', e => { e.preventDefault(); if (isPlaying) document.dispatchEvent(new KeyboardEvent('keydown', {code:'KeyF'})); });
+        document.getElementById('touch-pause').addEventListener('click', e => {
+            e.preventDefault();
+            if (!isPlaying) return;
+            // Mobile touch controls do not use Pointer Lock, so pause them directly.
+            const pauseMenu = document.getElementById('pause-menu');
+            pauseMenu.style.display = 'flex';
+            ui.style.display = 'none';
+            crosshair.style.display = 'none';
+            hpBar.style.display = 'none';
+            chat.style.display = 'none';
+            timerHud.style.display = 'none';
+            isPlaying = false;
+            syncMobileControls();
+        });
+
+
+        controls.addEventListener('lock', () => {
+            menu.style.display = 'none';
+            deathScreen.style.display = 'none';
+            document.getElementById('pause-modal').style.display = 'none';
+            document.getElementById('pause-menu').style.display = 'none';
+            ui.style.display = 'block';
+            crosshair.style.display = 'block';
+            hpBar.style.display = 'block';
+            chat.style.display = 'flex';
+            timerHud.style.display = 'block';
+            chatInput.style.display = 'none';
+            weaponMenu.style.display = 'none';
+            isPlaying = true;
+            syncMobileControls();
+        });
+
+        controls.addEventListener('unlock', () => {
+            const emModal = document.getElementById('emotion-menu');
+            if (health > 0 && chatInput.style.display !== 'block' && weaponMenu.style.display !== 'block' && 
+                document.getElementById('spawn-modal').style.display !== 'flex' && 
+                (!emModal || emModal.style.display !== 'flex')) {
+                closeSniperScope(); updateScopeButton();
+                document.getElementById('pause-menu').style.display = 'flex';
+                ui.style.display = 'none';
+                crosshair.style.display = 'none';
+                hpBar.style.display = 'none';
+                chat.style.display = 'none';
+                timerHud.style.display = 'none';
+                isPlaying = false;
+                syncMobileControls();
+            }
+        });
+
+        function restoreGameplayAfterRespawn() {
+            deathScreen.style.display = 'none';
+            document.getElementById('pause-menu').style.display = 'none';
+            document.getElementById('pause-modal').style.display = 'none';
+            weaponMenu.style.display = 'none';
+            document.getElementById('emotion-menu').style.display = 'none';
+            chatInput.style.display = 'none';
+            ui.style.display = 'block';
+            crosshair.style.display = 'block';
+            hpBar.style.display = 'block';
+            chat.style.display = 'flex';
+            timerHud.style.display = 'block';
+            isPlaying = true;
+            if (playerModel) playerModel.visible = cameraMode > 0;
+            if (playerWeapon) playerWeapon.visible = cameraMode === 0;
+            applyWeaponState(playerModel, currentWeapon, equippedWeaponSkins[currentWeapon] || null, true);
+            syncMobileControls();
+        }
+
+        window.resumeGame = () => {
+            const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+            if (touchDevice) {
+                document.getElementById('pause-menu').style.display = 'none';
+                ui.style.display = 'block';
+                crosshair.style.display = 'block';
+                hpBar.style.display = 'block';
+                chat.style.display = 'flex';
+                timerHud.style.display = 'block';
+                isPlaying = true;
+                syncMobileControls();
+            } else {
+                controls.lock();
+            }
+        };
+
+        window.exitGame = () => {
+            if (database) {
+                database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).remove();
+                database.ref(`rooms/${currentRoomId}/players`).once('value', snapshot => {
+                    if (!snapshot.exists()) {
+                        database.ref(`rooms/${currentRoomId}`).remove();
+                    }
+                });
+            }
+            location.reload();
+        };
+
+        continueBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            health = 100;
+            hpFill.style.width = '100%';
+            resetPlayerHP();
+            if (database && currentRoomId && myPlayerId) {
+                database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({
+                    hp: {val:100, by:''}, alive:true, weapon:currentWeapon,
+                    weaponSkin:equippedWeaponSkins[currentWeapon] || null, lastHitBy:''
+                });
+            }
+            closeSniperScope();
+            restoreGameplayAfterRespawn();
+            const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+            if (!touchDevice) {
+                try { controls.lock(); } catch (_) { /* The game UI is already restored if Pointer Lock is unavailable. */ }
+            }
+        });
+
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = false;
+        const velocity = new THREE.Vector3(), direction = new THREE.Vector3();
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Enter') {
+                if (chatInput.style.display === 'block') {
+                    if (chatInput.value.trim()) {
+                        addChatMessage(`${nickInput.value || 'Player'}: ${chatInput.value}`);
+                    }
+                    chatInput.value = ''; chatInput.style.display = 'none'; controls.lock();
+                } else if (isPlaying) {
+                    controls.unlock(); chatInput.style.display = 'block'; chatInput.focus();
+                }
+                return;
+            }
+            if (e.code === 'KeyE' && isPlaying) {
+                e.preventDefault();
+                if (weaponMenu.style.display === 'block') {
+                    weaponMenu.style.display = 'none';
+                    if (!('ontouchstart' in window) && navigator.maxTouchPoints <= 0) controls.lock();
+                    touchLookId = null;
+                } else {
+                    weaponList.innerHTML = '';
+                    ownedWeapons.forEach(w => {
+                        if (!weaponNames[w]) return;
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'weapon-slot' + (w === currentWeapon ? ' active' : '');
+                        button.textContent = `${weaponIcons[w] || '🔫'} ${weaponNames[w]}${w === currentWeapon ? ' · ВЫБРАНО' : ''}`;
+                        button.addEventListener('click', (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const selected = window.selectWeapon(w);
+                            if (!selected) return;
+                            weaponMenu.style.display = 'none';
+                            if (!('ontouchstart' in window) && navigator.maxTouchPoints <= 0) {
+                                try { controls.lock(); } catch (_) {}
+                            }
+                            touchLookId = null;
+                        });
+                        weaponList.appendChild(button);
+                    });
+                    weaponMenu.style.display = 'block';
+                    weaponMenu.style.pointerEvents = 'auto';
+                    if (!('ontouchstart' in window) && navigator.maxTouchPoints <= 0) controls.unlock();
+                }
+                return;
+            }
+            if (e.code === 'KeyF' && isPlaying) {
+                const emModal = document.getElementById('emotion-menu');
+                if (emModal.style.display === 'flex') {
+                    emModal.style.display = 'none'; controls.lock();
+                } else {
+                    controls.unlock(); emModal.style.display = 'flex';
+                }
+                return;
+            }
+            if (e.code === 'KeyR' && isPlaying && controls.isLocked) {
+                startReload();
+                return;
+            }
+            if (e.code === 'KeyQ' && isPlaying) {
+                const modal = document.getElementById('spawn-modal');
+                if (modal.style.display === 'flex') {
+                    modal.style.display = 'none';
+                    controls.lock();
+                } else {
+                    controls.unlock();
+                    modal.style.display = 'flex';
+                }
+                return;
+            }
+            if (e.code === 'F5' && isPlaying) {
+                e.preventDefault();
+                cameraMode = (cameraMode + 1) % 4;
+                playerModel.visible = true;
+                playerWeapon.visible = cameraMode === 0;
+                if (playerModel) playerModel.userData.camMode = cameraMode;
+                return;
+            }
+
+            window.spawnProp = (type) => {
+                // Если спавним камеру — спавним вместе с ней экран (как в оригинале)
+                const isCamera = type === 'camera';
+                const prop = createPropModel(type);
+
+                raycaster.setFromCamera({x:0, y:0}, camera);
+                const intersects = raycaster.intersectObjects([...props, floor]);
+                let pos = new THREE.Vector3();
+                
+                if (intersects.length > 0 && intersects[0].distance < 15) {
+                    const hit = intersects[0];
+                    const normal = hit.face.normal.clone().applyQuaternion(hit.object.quaternion);
+                    pos.copy(hit.point).add(normal.multiplyScalar(0.6));
+                } else {
+                    const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+                    pos.copy(camera.position).add(dir.multiplyScalar(4));
+                    pos.y = 0.5;
+                }
+                
+                prop.position.copy(pos);
+                prop.userData.type = type;
+                
+                // Создаём экран, привязанный к этой камере
+                if (isCamera) {
+                    const screen = createPropModel('camera_screen');
+                    screen.position.copy(pos).add(new THREE.Vector3(2, 0, 0)); // чуть в стороне
+                    screen.userData.type = 'camera_screen';
+                    screen.userData.linkedCamera = prop; // прямая ссылка на камеру
+                    prop.userData.linkedScreen = screen; // обратная ссылка
+                    
+                    if (database) {
+                        const propRef = database.ref(`rooms/${currentRoomId}/props`).push();
+                        propRef.set({
+                            type: type,
+                            x: pos.x, y: pos.y, z: pos.z,
+                            owner: myPlayerId
+                        });
+                        prop.userData.networkId = propRef.key;
+                        
+                        const screenRef = database.ref(`rooms/${currentRoomId}/props`).push();
+                        screenRef.set({
+                            type: 'camera_screen',
+                            x: screen.position.x, y: screen.position.y, z: screen.position.z,
+                            owner: myPlayerId,
+                            linkedCameraId: propRef.key
+                        });
+                        screen.userData.networkId = screenRef.key;
+                    } else {
+                        scene.add(prop); props.push(prop);
+                        scene.add(screen); props.push(screen);
+                    }
+                } else {
+                    if (database) {
+                        const propRef = database.ref(`rooms/${currentRoomId}/props`).push();
+                        propRef.set({
+                            type: type,
+                            x: pos.x, y: pos.y, z: pos.z,
+                            owner: myPlayerId
+                        });
+                        prop.userData.networkId = propRef.key;
+                    } else {
+                        scene.add(prop); props.push(prop);
+                    }
+                }
+                
+                closeModals();
+                controls.lock();
+            };
+            if (e.code === 'KeyX' && isPlaying && controls.isLocked) {
+                raycaster.setFromCamera({x:0, y:0}, camera);
+                const hits = raycaster.intersectObjects(props, true);
+                if (hits.length > 0) {
+                    let o = hits[0].object;
+                    while(o.parent && !props.includes(o)) o = o.parent;
+                    if (props.includes(o)) {
+                        if (database && o.userData.networkId) {
+                            database.ref(`rooms/${currentRoomId}/props/${o.userData.networkId}`).remove();
+                        } else {
+                            scene.remove(o); props.splice(props.indexOf(o), 1);
+                        }
+                    }
+                }
+                return;
+            }
+            if (e.code === 'KeyT' && isPlaying && controls.isLocked) {
+                raycaster.setFromCamera({x:0, y:0}, camera);
+                const hits = raycaster.intersectObjects(props, true);
+                if (hits.length > 0) {
+                    let o = hits[0].object;
+                    while(o.parent && !props.includes(o)) o = o.parent;
+                    if (o && o.userData.isDoor) {
+                        o.userData.isOpen = !o.userData.isOpen;
+                        if (database && o.userData.networkId) {
+                            database.ref(`rooms/${currentRoomId}/props/${o.userData.networkId}`).update({
+                                isOpen: o.userData.isOpen
+                            });
+                        } else {
+                            o.userData.hinge.rotation.y = o.userData.isOpen ? Math.PI/2 : 0;
+                        }
+                    } else if (o && o.userData.isNPC) {
+                        window.targetNPC = o;
+                        controls.unlock();
+                        document.getElementById('emotion-menu').style.display = 'flex';
+                    }
+                }
+                return;
+            }
+
+            if(!isPlaying || chatInput.style.display === 'block') return;
+            switch (e.code) {
+                case 'KeyW': moveForward = true; break;
+                case 'KeyA': moveLeft = true; break;
+                case 'KeyS': moveBackward = true; break;
+                case 'KeyD': moveRight = true; break;
+                case 'Space': if (canJump) velocity.y += 20; canJump = false; break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            switch (e.code) {
+                case 'KeyW': moveForward = false; break;
+                case 'KeyA': moveLeft = false; break;
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyD': moveRight = false; break;
+            }
+        });
+
+        document.addEventListener('mousedown', (e) => {
+            if (!controls.isLocked || chatInput.style.display === 'block') return;
+            if (e.button === 2) {
+                raycaster.setFromCamera({x:0, y:0}, camera);
+                const hits = raycaster.intersectObjects(props, true);
+                if (hits.length > 0) {
+                    let o = hits[0].object;
+                    while(o.parent && !props.includes(o)) o = o.parent;
+                    if(props.includes(o)) {
+                        grabbedObj = o;
+                        grabbedDist = hits[0].distance;
+                    }
+                }
+            } else if (e.button === 0) {
+                if (!['knife','stiletto','butterfly_knife','m9_bayonet','karambit'].includes(currentWeapon)) {
+                    if (ammo <= 0) {
+                        addChatMessage("Нажми R для перезарядки!", "kill");
+                        return;
+                    }
+                    if (isReloading) return;
+                }
+
+                if (currentWeapon === 'rifle') {
+                    isShooting = true;
+                } else {
+                    const dir = new THREE.Vector3();
+                    camera.getWorldDirection(dir);
+                    shoot(camera.position, dir);
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => { 
+            if(e.button === 2) grabbedObj = null;
+            if(e.button === 0) isShooting = false;
+        });
+
+        document.addEventListener('wheel', (e) => {
+            if (grabbedObj && controls.isLocked) {
+                grabbedObj.rotation.y += e.deltaY * 0.002;
+            }
+        }, { passive: true });
+
+        window.addEventListener('wheel', (e) => {
+            if (grabbedObj && isPlaying && controls.isLocked) {
+                grabbedObj.rotation.y += e.deltaY * 0.005;
+                if (database && grabbedObj.userData.networkId) {
+                    database.ref(`rooms/${currentRoomId}/props/${grabbedObj.userData.networkId}`).update({
+                        ry: grabbedObj.rotation.y
+                    });
+                }
+            }
+        });
+
+        const enemies = [], bullets = [], enemyBullets = [];
+        const remotePlayers = {}; 
+        const ENEMY_SPEED = 0.11; 
+
+        let myPlayerId = 'p_' + Math.random().toString(36).substr(2, 9);
+        let currentRoomId = 'lobby';
+
+        function setupNetworkListeners() {
+            if (!database) return;
+            const playersRef = database.ref(`rooms/${currentRoomId}/players`);
+            const myHPRef = database.ref(`rooms/${currentRoomId}/players/${myPlayerId}/hp`);
+            
+            playersRef.off();
+            myHPRef.off();
+
+            myHPRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+                const newHP = (typeof data === 'object') ? data.val : data;
+                const killer = (typeof data === 'object') ? (data.by || "Враг") : "Враг";
+                if (newHP < health) {
+                    health = newHP;
+                    hpFill.style.width = Math.max(0, health) + '%';
+                    if (health <= 0 && isPlaying) {
+                        isPlaying = false;
+                        controls.unlock();
+                        killerNameDisplay.innerText = killer;
+                        deathScreen.style.display = 'flex';
+                        if (playerModel?.userData.weaponGroup) playerModel.userData.weaponGroup.visible = false;
+                        if (playerWeapon) playerWeapon.visible = false;
+                        if (database && currentRoomId) database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({ alive: false });
+                        addChatMessage(`${killer} ➔ ${nickInput.value}`, 'kill');
+                        database.ref(`rooms/${currentRoomId}/enemyScore`).transaction(s => (s || 0) + 1);
+                    }
+                }
+            });
+
+            resetPlayerHP();
+            syncNetwork();
+
+            playersRef.on('child_added', (snapshot) => {
+                const id = snapshot.key;
+                const data = snapshot.val();
+                if (id !== myPlayerId && data && data.name) {
+                    const isNew = data.lastSeen > Date.now() - 2000;
+                    updateRemotePlayer(id, data, isNew);
+                }
+            });
+
+            playersRef.on('child_changed', (snapshot) => {
+                const id = snapshot.key;
+                const data = snapshot.val();
+                if (id !== myPlayerId) {
+                    updateRemotePlayer(id, data, false);
+                }
+            });
+
+            playersRef.on('child_removed', (snapshot) => {
+                const id = snapshot.key;
+                if (remotePlayers[id]) {
+                    addChatMessage(`${remotePlayers[id].userData.name} покинул игру`);
+                    scene.remove(remotePlayers[id]);
+                    delete remotePlayers[id];
+                }
+            });
+
+            const propsRef = database.ref(`rooms/${currentRoomId}/props`);
+            propsRef.on('child_added', (snapshot) => {
+                const id = snapshot.key;
+                const data = snapshot.val();
+                if (props.find(p => p.userData.networkId === id)) return;
+
+                const prop = createPropModel(data.type);
+                prop.position.set(data.x, data.y, data.z);
+                prop.rotation.y = data.ry || 0;
+                prop.userData.networkId = id;
+                // Если это экран камеры, сохраняем linkedCameraId
+                if (data.linkedCameraId) {
+                    prop.userData.linkedCameraId = data.linkedCameraId;
+                }
+                if (prop.userData.isDoor) {
+                    prop.userData.isOpen = data.isOpen || false;
+                    prop.userData.hinge.rotation.y = prop.userData.isOpen ? Math.PI/2 : 0;
+                }
+                scene.add(prop);
+                props.push(prop);
+
+                // Если загрузили камеру — создаём/находим её экран
+                if (data.type === 'camera' && !data.linkedCameraId) {
+                    // Ищем существующий экран, привязанный к этой камере
+                    const existingScreen = props.find(p => 
+                        p.userData.isScreen && p.userData.linkedCameraId === id
+                    );
+                    if (!existingScreen) {
+                        // Создаём экран локально (в БД он создастся через child_added, если там есть запись)
+                        // Но мы не создаём дубликат здесь — ждём child_added для экрана
+                    }
+                }
+            });
+
+            propsRef.on('child_changed', (snapshot) => {
+                const id = snapshot.key;
+                const data = snapshot.val();
+                const prop = props.find(p => p.userData.networkId === id);
+                if (prop && grabbedObj !== prop) {
+                    prop.position.set(data.x, data.y, data.z);
+                    prop.rotation.y = data.ry || 0;
+                    if (prop.userData.isDoor) {
+                        prop.userData.isOpen = data.isOpen || false;
+                        prop.userData.hinge.rotation.y = prop.userData.isOpen ? Math.PI/2 : 0;
+                    }
+                    // Обновляем linkedCameraId если изменился
+                    if (data.linkedCameraId !== undefined) {
+                        prop.userData.linkedCameraId = data.linkedCameraId;
+                    }
+                }
+            });
+
+            propsRef.on('child_removed', (snapshot) => {
+                const id = snapshot.key;
+                const idx = props.findIndex(p => p.userData.networkId === id);
+                if (idx !== -1) {
+                    const removedProp = props[idx];
+                    // Если удаляем камеру — удаляем и её экран
+                    if (removedProp.userData.isCamera) {
+                        const linkedScreen = props.find(p => 
+                            p.userData.isScreen && p.userData.linkedCameraId === id
+                        );
+                        if (linkedScreen) {
+                            const screenIdx = props.indexOf(linkedScreen);
+                            if (screenIdx !== -1) {
+                                scene.remove(linkedScreen);
+                                props.splice(screenIdx, 1);
+                            }
+                            // Удаляем из БД
+                            if (database && linkedScreen.userData.networkId) {
+                                database.ref(`rooms/${currentRoomId}/props/${linkedScreen.userData.networkId}`).remove();
+                            }
+                        }
+                    }
+                    // Если удаляем экран — чистим ссылку у камеры
+                    if (removedProp.userData.isScreen && removedProp.userData.linkedCameraId) {
+                        const cam = props.find(p => p.userData.networkId === removedProp.userData.linkedCameraId && p.userData.isCamera);
+                        if (cam) cam.userData.linkedScreen = null;
+                    }
+                    scene.remove(removedProp);
+                    props.splice(idx, 1);
+                }
+            });
+        }
+
+        function syncNetwork() {
+            if (!database || !isPlaying) return;
+            const currentNick = nickInput.value.trim() || localStorage.getItem('cg_nick') || 'Player';
+            
+            const camDir = new THREE.Vector3();
+            camera.getWorldDirection(camDir);
+            const pitch = Math.asin(camDir.y);
+
+            if (playerModel) {
+                playerModel.userData.headGroup.rotation.x = -pitch;
+            }
+            
+            if (playerModel) {
+                const sprite = playerModel.children.find(c => c.userData.isNameTag);
+                if (sprite && playerModel.userData.renderedName !== currentNick) {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 256; canvas.height = 64;
+                    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px Arial'; ctx.textAlign = 'center';
+                    ctx.fillText(currentNick, 128, 45);
+                    sprite.material.map.dispose();
+                    sprite.material.map = new THREE.CanvasTexture(canvas);
+                    playerModel.userData.renderedName = currentNick;
+                }
+            }
+
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            const angle = Math.atan2(dir.x, dir.z);
+            
+            database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({
+                name: currentNick,
+                x: camera.position.x,
+                y: camera.position.y,
+                z: camera.position.z,
+                ry: angle,
+                rx: -pitch,
+                weapon: currentWeapon,
+                action: playerWeapon && playerWeapon.userData.networkActionAt && Date.now() - playerWeapon.userData.networkActionAt < 3000 ? playerWeapon.userData.networkAction : null,
+                actionAt: playerWeapon && playerWeapon.userData.networkActionAt || 0,
+                actionDuration: playerWeapon && playerWeapon.userData.networkActionDuration || 0,
+                actionVariant: playerWeapon && playerWeapon.userData.networkActionVariant || null,
+                weaponSkin: equippedWeaponSkins[currentWeapon] || null,
+                alive: health > 0,
+                hat: currentHat,
+                glass: currentGlass,
+                beak: currentBeak,
+                boot: currentBoot,
+                backpack: currentBackpack,
+                emotion: currentEmotion,
+                transforms: itemTransforms,
+                lastSeen: Date.now()
+            });
+            const mapRef = database.ref(`rooms/${currentRoomId}/map`);
+            mapRef.once('value', s => { if (!s.exists()) mapRef.set(currentMap); });
+        }
+
+        function resetPlayerHP() {
+            health = 100;
+            hpFill.style.width = '100%';
+            applyWeaponState(playerModel, currentWeapon, equippedWeaponSkins[currentWeapon] || null, true);
+            if (database) {
+                database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({
+                    hp: { val: 100, by: "" }, alive: true,
+                    weapon: currentWeapon, weaponSkin: equippedWeaponSkins[currentWeapon] || null
+                });
+            }
+        }
+
+        function updateRemotePlayer(id, data, showMsg = false) {
+            if (!remotePlayers[id]) {
+                const model = createChickenModel(true);
+                model.userData.id = id;
+                model.userData.name = data.name || 'Player';
+                model.userData.lastRenderedName = ""; 
+                scene.add(model);
+                remotePlayers[id] = model;
+                if (showMsg) addChatMessage(`${model.userData.name} зашел на сервер`, 'normal');
+            }
+            const p = remotePlayers[id];
+            if (data.actionAt && data.actionAt !== p.userData.lastActionAt) {
+                p.userData.lastActionAt = data.actionAt;
+                p.userData.remoteAction = data.action || null;
+                p.userData.remoteActionVariant = data.actionVariant || null;
+                p.userData.remoteActionDuration = Number(data.actionDuration) || 0;
+                p.userData.remoteActionStarted = performance.now();
+            }
+            p.position.set(data.x, data.y - 1.2, data.z);
+            p.rotation.y = data.ry || 0; 
+            if (p.userData.headGroup) p.userData.headGroup.rotation.x = data.rx || 0;
+            
+            const tr = data.transforms || {};
+
+            if (data.hp !== undefined) {
+                const hpVal = (typeof data.hp === 'object') ? data.hp.val : data.hp;
+                p.userData.hp = hpVal;
+                if (p.userData.hpRed) p.userData.hpRed.scale.x = Math.max(0, hpVal / 100);
+            }
+
+            // Оружие и скин берём только из сетевых данных конкретного игрока.
+            // Локальный инвентарь/скины этого клиента никогда не влияют на чужую модель.
+            const remoteWeapon = typeof data.weapon === 'string' ? data.weapon : 'pistol';
+            const remoteSkin = typeof data.weaponSkin === 'string' ? data.weaponSkin : null;
+            const remoteHp = data.hp !== undefined ? (typeof data.hp === 'object' ? data.hp.val : data.hp) : 100;
+            applyWeaponState(p, remoteWeapon, remoteSkin, data.alive !== false && Number(remoteHp) > 0);
+            if (p.userData.weaponGroup && p.userData.remoteActionStarted) {
+                const weaponGroup = p.userData.weaponGroup;
+                const action = p.userData.remoteAction;
+                const elapsed = performance.now() - p.userData.remoteActionStarted;
+                const defaultDuration = action === 'inspect' ? 1200 : action === 'reload' ? 1500 : action === 'melee' ? 420 : 170;
+                const duration = Math.max(120, Math.min(3000, p.userData.remoteActionDuration || defaultDuration));
+                const progress = Math.max(0, Math.min(1, elapsed / duration));
+                const wave = Math.sin(progress * Math.PI);
+                const rest = weaponGroup.userData.restRotation || new THREE.Euler(0, Math.PI, 0);
+
+                // Двигаем оружие относительно его штатного положения (Y = PI),
+                // а не сбрасываем вращение в ноль — иначе у остальных оно переворачивается.
+                weaponGroup.rotation.set(rest.x, rest.y, rest.z);
+                if (action === 'shoot') {
+                    weaponGroup.rotation.x = rest.x - wave * 0.20;
+                    weaponGroup.position.z = 0.4 + wave * 0.07;
+                } else if (action === 'reload') {
+                    weaponGroup.rotation.x = rest.x + wave * 0.34;
+                    weaponGroup.position.y = -0.2 - wave * 0.12;
+                } else if (action === 'melee') {
+                    weaponGroup.rotation.x = rest.x - wave * 0.72;
+                    weaponGroup.rotation.y = rest.y + wave * 0.18;
+                    weaponGroup.rotation.z = rest.z + wave * 0.20;
+                    weaponGroup.position.z = 0.4 - wave * 0.22;
+                } else if (action === 'inspect') {
+                    const isButterfly = weaponGroup.userData.weaponType === 'butterfly_knife';
+                    if (isButterfly) {
+                        // Повторяем тот же вариант, который запустил владелец ножа.
+                        // Вариант передаётся по сети, поэтому у всех клиентов одна и та же анимация.
+                        const variant = p.userData.remoteActionVariant || 'flip';
+                        const smooth = t => {
+                            t = Math.max(0, Math.min(1, t));
+                            return t * t * (3 - 2 * t);
+                        };
+                        if (variant === 'toss') {
+                            const flight = Math.max(0, Math.min(1, (progress - 0.12) / 0.72));
+                            const arc = Math.sin(flight * Math.PI);
+                            const spin = flight * Math.PI * 2;
+
+                            // В третьем лице нож поднимается над рукой, прокручивается и возвращается.
+                            weaponGroup.position.set(
+                                (weaponGroup.userData.restPosition?.x ?? 0.1) + 0.52 * arc,
+                                (weaponGroup.userData.restPosition?.y ?? -0.2) + 0.95 * arc,
+                                (weaponGroup.userData.restPosition?.z ?? 0.4)
+                            );
+                            weaponGroup.rotation.set(
+                                rest.x + spin,
+                                rest.y + 0.18 * arc,
+                                rest.z + Math.sin(flight * Math.PI) * 0.42
+                            );
+                            const right = (weaponGroup.userData.butterflyHandles || []).find(h => h.userData.side === 1);
+                            const left = (weaponGroup.userData.butterflyHandles || []).find(h => h.userData.side === -1);
+                            if (right) right.rotation.set((right.userData.restX || 0) + Math.sin(flight * Math.PI * 2) * 3.0 + arc * 1.15, 0.18 * arc, 0.12 * arc);
+                            if (left) left.rotation.set((left.userData.restX || 0) - Math.sin(flight * Math.PI * 2 + 0.8) * 2.8 - arc * 0.9, -0.16 * arc, -0.10 * arc);
+                        } else {
+                            // Тот же flip: рукоятки складываются по очереди,
+                            // затем клинок проходит полный оборот и возвращается в хват.
+                            const right = (weaponGroup.userData.butterflyHandles || []).find(h => h.userData.side === 1);
+                            const left = (weaponGroup.userData.butterflyHandles || []).find(h => h.userData.side === -1);
+                            const fold = smooth(progress / 0.22) * 2.95;
+                            const release = smooth((progress - 0.57) / 0.25) * 2.85;
+                            if (right) right.rotation.set(0.12 + fold - release, 0.10 + Math.sin(progress * Math.PI) * 0.22, 0.06);
+                            if (left) {
+                                const counter = Math.sin(Math.max(0, Math.min(1, (progress - 0.16) / 0.62)) * Math.PI);
+                                left.rotation.set(-0.10 - counter * 1.55, -0.12 - counter * 0.30, -0.08);
+                            }
+                            const rollPhase = smooth((progress - 0.20) / 0.46);
+                            weaponGroup.rotation.set(
+                                rest.x + Math.sin(rollPhase * Math.PI) * 0.46,
+                                rest.y + Math.sin(rollPhase * Math.PI) * 0.82,
+                                rest.z + rollPhase * Math.PI * 2
+                            );
+                            weaponGroup.position.set(
+                                weaponGroup.userData.restPosition?.x ?? 0.1,
+                                (weaponGroup.userData.restPosition?.y ?? -0.2) + Math.sin(rollPhase * Math.PI) * 0.13,
+                                weaponGroup.userData.restPosition?.z ?? 0.4
+                            );
+                        }
+                    } else {
+                        weaponGroup.rotation.x = rest.x + wave * 0.48;
+                        weaponGroup.rotation.y = rest.y + Math.sin(progress * Math.PI * 2) * 0.20;
+                        weaponGroup.rotation.z = rest.z + wave * 0.48;
+                        weaponGroup.position.y = (weaponGroup.userData.restPosition?.y ?? -0.2) + wave * 0.10;
+                    }
+                }
+
+                const remoteHandles = weaponGroup.userData.butterflyHandles || [];
+                if (action === 'melee') {
+                    remoteHandles.forEach(handle => {
+                        const side = handle.userData.side || 1;
+                        handle.rotation.set((handle.userData.restX || 0) + side * wave * 1.2, side * wave * 0.16, 0);
+                    });
+                }
+
+                if (elapsed >= duration) {
+                    weaponGroup.rotation.copy(rest);
+                    weaponGroup.position.copy(weaponGroup.userData.restPosition || new THREE.Vector3(0.1, -0.2, 0.4));
+                    remoteHandles.forEach(handle => {
+                        handle.rotation.set(handle.userData.restX || 0, 0, 0);
+                    });
+                    p.userData.remoteActionStarted = 0;
+                }
+            }
+
+            // Всегда обновляем визуал с учетом пришедших трансформаций
+            if (data.hat !== undefined) { p.userData.currentHat = data.hat; updateHatMesh(p, data.hat, tr.hat); }
+            if (data.glass !== undefined) { p.userData.currentGlass = data.glass; updateGlassMesh(p, data.glass, tr.glass); }
+            if (data.beak !== undefined) { p.userData.currentBeak = data.beak; updateBeakMesh(p, data.beak, tr.beak); }
+            if (data.boot !== undefined) { p.userData.currentBoot = data.boot; updateBootMesh(p, data.boot, tr.boot); }
+            if (data.backpack !== undefined) { p.userData.currentBackpack = data.backpack; updateBackpackMesh(p, data.backpack, tr.backpack); }
+            
+            if (data.emotion !== undefined) p.userData.emotion = data.emotion;
+            
+            if (p.userData.lastRenderedName !== data.name) {
+                p.userData.lastRenderedName = data.name;
+                p.userData.name = data.name;
+                const sprite = p.children.find(c => c instanceof THREE.Sprite);
+                if (sprite) {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 256; canvas.height = 64;
+                    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px Arial'; ctx.textAlign = 'center';
+                    ctx.fillText(data.name, 128, 45);
+                    if (sprite.material.map) sprite.material.map.dispose();
+                    sprite.material.map = new THREE.CanvasTexture(canvas);
+                    sprite.material.needsUpdate = true;
+                }
+            }
+        }
+
+        function spawnEnemy(silent = false) {
+            if (enemies.length >= maxPlayersLimit) return;
+            const en = createChickenModel();
+            en.position.set((Math.random()-0.5)*80, 0, (Math.random()-0.5)*80); 
+            en.userData.lastShot = Date.now() + Math.random() * 2000;
+            scene.add(en); enemies.push(en);
+            if (!silent) addChatMessage(`${en.userData.name} вошел в игру`);
+        }
+
+        function meleeAttack() {
+            // Анимация удара
+            if (playerWeapon) {
+                const now = performance.now();
+                playerWeapon.userData.slashStarted = now;
+                playerWeapon.userData.slashUntil = now + 420;
+                playerWeapon.userData.slashType = currentWeapon;
+                playerWeapon.userData.inspectQueued = true;
+                playerWeapon.userData.networkAction = 'melee';
+                playerWeapon.userData.networkActionDuration = 420;
+                playerWeapon.userData.networkActionAt = Date.now();
+                if (database && currentRoomId && myPlayerId) syncNetwork();
+            }
+
+            const meleeRange = 3.5;
+            for (let id in remotePlayers) {
+                const rp = remotePlayers[id];
+                const dist = camera.position.distanceTo(rp.position.clone().add(new THREE.Vector3(0, 1, 0)));
+                if (dist < meleeRange) {
+                    if (database) {
+                        database.ref(`rooms/${currentRoomId}/players/${id}/hp`).transaction((current) => {
+                            let oldVal = (typeof current === 'object') ? (current.val ?? 100) : (current ?? 100);
+                            if (oldVal <= 0) return;
+                            return { val: Math.max(0, oldVal - 1000), by: nickInput.value || 'Player' };
+                        });
+                    }
+                }
+            }
+        }
+
+        function shoot(fromPos, targetDir, isEnemy = false, shooterName = "") {
+            if (!isEnemy) {
+                if (['knife','stiletto','butterfly_knife','m9_bayonet','karambit'].includes(currentWeapon)) {
+                    meleeAttack();
+                    return;
+                }
+                if (ammo <= 0) {
+                    startReload();
+                    return;
+                }
+                ammo--;
+                if (playerWeapon) {
+                    playerWeapon.userData.shootStarted = performance.now();
+                    playerWeapon.userData.shootUntil = playerWeapon.userData.shootStarted + 170;
+                    playerWeapon.userData.networkAction = 'shoot';
+                    playerWeapon.userData.networkActionDuration = 170;
+                    playerWeapon.userData.networkActionAt = Date.now();
+                    if (database && currentRoomId && myPlayerId) syncNetwork();
+                }
+                document.getElementById('ammo-hud').innerText = `${ammo} / ∞`;
+                if (ammo <= 0) startReload();
+            }
+            const isRocket = !isEnemy && currentWeapon === 'bazooka';
+            const bullet = new THREE.Mesh(
+                isRocket ? new THREE.SphereGeometry(0.3, 12, 12) : new THREE.SphereGeometry(0.12),
+                new THREE.MeshBasicMaterial({color: isRocket ? 0xff4400 : 0xffff00})
+            );
+            bullet.position.copy(fromPos).add(targetDir.clone().multiplyScalar(isRocket ? 0.9 : 0));
+            const speed = isEnemy ? 0.6 : (currentWeapon === 'sniper' ? 5.2 : (currentWeapon === 'rifle' ? 2.8 : (isRocket ? 1.1 : 1.6)));
+            bullet.userData.velocity = targetDir.clone().multiplyScalar(speed);
+            bullet.userData.isEnemy = isEnemy;
+            bullet.userData.isRocket = isRocket;
+            bullet.userData.shooter = shooterName || (isEnemy ? "Bot" : nickInput.value);
+            scene.add(bullet);
+            (isEnemy ? enemyBullets : bullets).push(bullet);
+        }
+
+        const clock = new THREE.Clock();
+        let lastSyncTime = 0;
+
+        // --- ПРЕВЬЮ В МАГАЗИНЕ ---
+        let shopScene, shopCamera, shopRenderer, shopChicken;
+        let isDraggingPreview = false, previousMouseX = 0;
+
+        function initShopPreview() {
+            if (shopRenderer) {
+                updateHatMesh(shopChicken, currentHat);
+                updateGlassMesh(shopChicken, currentGlass);
+                updateBeakMesh(shopChicken, currentBeak);
+                updateBootMesh(shopChicken, currentBoot);
+                const wing = shopChicken.userData.headGroup.children.find(c => c.position.x > 0.5);
+                if (wing) {
+                    wing.clear();
+                    const gun = createWeaponModel(currentWeapon, equippedWeaponSkins[currentWeapon] || null);
+                    gun.position.set(0.1, -0.2, 0.4);
+                    wing.add(gun);
+                }
+                return;
+            }
+
+            shopScene = new THREE.Scene();
+            shopScene.background = new THREE.Color(0x1a1a1a);
+            
+            shopCamera = new THREE.PerspectiveCamera(40, 220 / 280, 0.1, 100);
+            shopCamera.position.set(0, 1.1, 3.8);
+            shopCamera.lookAt(0, 0.8, 0);
+
+            shopRenderer = new THREE.WebGLRenderer({ antialias: true });
+            shopRenderer.setSize(220, 280);
+            shopPreviewContainer.appendChild(shopRenderer.domElement);
+
+            const shopAmbient = new THREE.AmbientLight(0xffffff, 1.8);
+            shopScene.add(shopAmbient);
+            const shopSun = new THREE.DirectionalLight(0xffffff, 0.8);
+            shopSun.position.set(5, 10, 5);
+            shopScene.add(shopSun);
+
+            shopChicken = createChickenModel(true);
+            shopChicken.position.y = -0.1;
+            shopChicken.position.x = -0.4; // Сдвинул немного левее
+            // Скрываем HP бар в превью
+            shopChicken.children.forEach(c => {
+                if (c.userData.isHPBar || c.userData.isNameTag) c.visible = false;
+            });
+            shopScene.add(shopChicken);
+            
+            shopPreviewContainer.onmousedown = (e) => { isDraggingPreview = true; previousMouseX = e.clientX; };
+            window.addEventListener('mousemove', (e) => {
+                if (isDraggingPreview && shopChicken) {
+                    const deltaX = e.clientX - previousMouseX;
+                    shopChicken.rotation.y += deltaX * 0.015;
+                    previousMouseX = e.clientX;
+                }
+            });
+            window.addEventListener('mouseup', () => isDraggingPreview = false);
+            
+            shopPreviewContainer.ontouchstart = (e) => { isDraggingPreview = true; previousMouseX = e.touches[0].clientX; };
+            window.addEventListener('touchmove', (e) => {
+                if (isDraggingPreview && shopChicken) {
+                    const deltaX = e.touches[0].clientX - previousMouseX;
+                    shopChicken.rotation.y += deltaX * 0.015;
+                    previousMouseX = e.touches[0].clientX;
+                }
+            });
+                                    window.addEventListener('touchend', () => isDraggingPreview = false);
+
+            function animateShop() {
+                            if (shopModal.style.display === 'flex') {
+                requestAnimationFrame(animateShop);
+                const t = Date.now() * 0.006;
+                shopChicken.userData.leftLeg.rotation.x = 0;
+shopChicken.userData.rightLeg.rotation.x = 0;
+                // Анимация тела
+                shopChicken.userData.headGroup.position.y = 0.9;
+                shopChicken.userData.headGroup.rotation.z = 0;
+                shopRenderer.render(shopScene, shopCamera);
+            }
+            }
+            animateShop();
+
+            updateHatMesh(shopChicken, currentHat);
+            updateGlassMesh(shopChicken, currentGlass);
+            updateBeakMesh(shopChicken, currentBeak);
+            updateBootMesh(shopChicken, currentBoot);
+            const wing = shopChicken.userData.headGroup.children.find(c => c.position.x > 0.5);
+            if (wing) {
+                wing.clear();
+                const gun = createWeaponModel(currentWeapon, equippedWeaponSkins[currentWeapon] || null);
+                gun.position.set(0.1, -0.2, 0.4);
+                gun.rotation.y = Math.PI; // Разворачиваем вперед
+                wing.add(gun);
+            }
+        }
+
+        function applyEmotionAnims(model, emotion, isMoving) {
+            if (!model || !model.userData.headGroup) return;
+            const head = model.userData.headGroup;
+            const wings = head.children.filter(c => c.geometry && c.geometry.type === 'RoundedBoxGeometry' && c.scale.y > 1); // Костыль для поиска крыльев
+            // На самом деле найдем крылья по позиции
+            const lWing = head.children.find(c => c.position.x < -0.5);
+            const rWing = head.children.find(c => c.position.x > 0.5);
+            const time = Date.now() * 0.01;
+
+            // Сброс если движемся (ходьба приоритетнее эмоций ног)
+            if (isMoving && emotion !== 'none') {
+                // Но оставляем руки если это не танец
+                if (emotion === 'dance') return; 
+            }
+
+            if (emotion === 'hello') {
+                if (rWing) {
+                    rWing.rotation.z = Math.sin(time * 1.5) * 0.8 + 0.5;
+                }
+            } else if (emotion === 'clap') {
+                if (lWing && rWing) {
+                    const clapVal = Math.sin(time * 2) * 0.6;
+                    lWing.rotation.y = clapVal;
+                    rWing.rotation.y = -clapVal;
+                    lWing.rotation.z = 0.3;
+                    rWing.rotation.z = -0.3;
+                }
+            } else if (emotion === 'dance') {
+                const bounce = Math.sin(time * 1.5) * 0.2;
+                model.position.y += bounce;
+                head.rotation.z = Math.sin(time) * 0.15;
+                if (model.userData.leftLeg && model.userData.rightLeg) {
+                    model.userData.leftLeg.rotation.x = Math.sin(time * 2) * 0.8;
+                    model.userData.rightLeg.rotation.x = Math.sin(time * 2 + Math.PI) * 0.8;
+                }
+                if (lWing && rWing) {
+                    lWing.rotation.z = Math.sin(time * 2) * 0.5 + 0.5;
+                    rWing.rotation.z = Math.sin(time * 2 + Math.PI) * 0.5 - 0.5;
+                }
+            } else {
+                // Сброс крыльев
+                if (lWing) { lWing.rotation.y = 0; lWing.rotation.z = 0; }
+                if (rWing) { rWing.rotation.y = 0; rWing.rotation.z = 0; }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            if (!isPlaying) {
+                            closeSniperScope(); updateScopeButton();
+                            menuChicken.rotation.y += 0.02;
+                            const t = Date.now() * 0.008;
+                menuChicken.userData.leftLeg.rotation.x = 0;
+            menuChicken.userData.rightLeg.rotation.x = 0;
+            // Анимация тела в меню
+            menuChicken.userData.headGroup.position.y = 0.9;
+            menuChicken.userData.headGroup.rotation.z = 0;
+            playerWeapon.visible = false;
+                if (playerModel) playerModel.visible = false;
+                menuChicken.visible = true;
+            } else {
+                updateScopeButton();
+                playerWeapon.visible = cameraMode === 0;
+                
+                // Модель игрока теперь видна всегда (чтобы видеть ноги), но в 1-м лице прячем голову
+                playerModel.visible = true;
+                if (playerModel.userData.headGroup) {
+                    playerModel.userData.headGroup.visible = cameraMode > 0;
+                }
+                
+                // Прячем собственные HP и Ник для себя
+                playerModel.children.forEach(c => {
+                    if (c.userData.isHPBar || c.userData.isNameTag) c.visible = false;
+                });
+
+                menuChicken.visible = false;
+                
+                // Обновляем позицию и поворот модели всегда, чтобы ноги следовали за камерой
+                playerModel.position.copy(camera.position);
+                playerModel.position.y -= 1.2;
+                const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+                playerModel.rotation.y = Math.atan2(dir.x, dir.z);
+
+                const isMoving = moveForward || moveBackward || moveLeft || moveRight;
+                
+                // Эмоции только в 3-м лице или для других
+                if (cameraMode > 0) applyEmotionAnims(playerModel, currentEmotion, isMoving);
+
+                // Анимация ходьбы (видна и в 3-м лице, и когда смотришь на ноги в 1-м)
+                // Анимация пропеллера на кепке
+                if (playerModel.userData.hatGroup) {
+                    const prop = playerModel.userData.hatGroup.children.find(c => c.userData.isPropeller);
+                    if (prop) prop.rotation.y += 0.3;
+                }
+                if (isMoving) {
+                    const t = Date.now() * 0.012;
+                    playerModel.userData.leftLeg.rotation.x = 0;
+                    playerModel.userData.rightLeg.rotation.x = 0;
+                    playerModel.userData.headGroup.position.y = 0.9;
+                    playerModel.userData.headGroup.rotation.z = 0;
+                } else {
+                    playerModel.userData.leftLeg.rotation.x = 0;
+                    playerModel.userData.rightLeg.rotation.x = 0;
+                    playerModel.userData.headGroup.position.y = 0.9;
+                    playerModel.userData.headGroup.rotation.z = 0;
+                }
+
+                playerWeapon.position.copy(camera.position);
+                playerWeapon.rotation.copy(camera.rotation);
+                playerWeapon.translateZ(-handDistance); playerWeapon.translateX(0.6); playerWeapon.translateY(-0.32);
+                // Небольшие процедурные анимации от первого лица.
+                const weaponNow = performance.now();
+                if (playerWeapon.userData.slashUntil > weaponNow) {
+                    const sp = (weaponNow-playerWeapon.userData.slashStarted)/(playerWeapon.userData.slashUntil-playerWeapon.userData.slashStarted);
+                    const slash = Math.sin(sp*Math.PI);
+                    playerWeapon.position.z -= slash*0.48;
+                    playerWeapon.rotation.x -= slash*0.85;
+                    playerWeapon.rotation.y += slash*0.22;
+                    playerHand.rotation.x = -slash*0.9;
+                    if (playerWeapon.userData.butterflyHandles) {
+                        playerWeapon.userData.butterflyHandles.forEach((handle,index) => {
+                            const side = handle.userData.side || (index ? 1 : -1);
+                            // Во время удара рукоятки резко расходятся, затем возвращаются.
+                            const swing = Math.sin(sp * Math.PI);
+                            handle.rotation.set((handle.userData.restX||0) + side * swing * 2.35, side * swing * 0.32, side * swing * 0.18);
+                        });
+                        playerWeapon.rotation.z += slash * 0.28;
+                    }
+                } else if (playerWeapon.userData.slashUntil && weaponNow >= playerWeapon.userData.slashUntil) {
+                    playerWeapon.userData.slashUntil = 0;
+                    playerHand.rotation.x = 0;
+                    if (playerWeapon.userData.inspectQueued) {
+                        playerWeapon.userData.inspectQueued = false;
+                        inspectCurrentWeapon();
+                    }
+                }
+                if (playerWeapon.userData.shootUntil > weaponNow) {
+                    const fp = (weaponNow-playerWeapon.userData.shootStarted)/(playerWeapon.userData.shootUntil-playerWeapon.userData.shootStarted);
+                    const kick = Math.sin(fp*Math.PI);
+                    playerWeapon.position.z += kick*0.12;
+                    playerWeapon.rotation.x -= kick*0.12;
+                }
+                if (playerWeapon.userData.reloadStarted) {
+                    const rp = Math.min(1, (weaponNow-playerWeapon.userData.reloadStarted)/(playerWeapon.userData.reloadDuration||1500));
+                    const wave = Math.sin(rp*Math.PI);
+                    playerWeapon.position.y -= wave*0.13;
+                    playerWeapon.rotation.x += wave*0.22;
+                    playerHand.rotation.x = wave*0.35;
+                    if (currentWeapon === 'sniper' && playerWeapon.userData.sniperBolt) {
+                        const bolt = playerWeapon.userData.sniperBolt;
+                        // Быстрый цикл: рука тянется к затвору, отводит его назад,
+                        // поднимает рукоять и возвращает затвор вперёд.
+                        const reach = Math.min(1, rp / 0.16);
+                        const pull = rp < 0.34 ? rp / 0.34 : (rp < 0.52 ? 1 : (rp < 0.78 ? 1 - (rp - 0.52) / 0.26 : 0));
+                        const lift = rp < 0.34 ? Math.min(1, rp / 0.24) : (rp < 0.52 ? 1 : Math.max(0, 1 - (rp - 0.52) / 0.20));
+                        playerHand.position.set(
+                            playerHand.userData.basePosition.x + reach * 0.20,
+                            playerHand.userData.basePosition.y + reach * 0.08,
+                            playerHand.userData.basePosition.z - reach * 0.24
+                        );
+                        playerHand.rotation.set(-0.35 * reach + 0.2 * pull, 0.18 * reach, -0.45 * reach);
+                        supportHand.visible = true;
+                        supportHand.position.copy(supportHand.userData.basePosition);
+                        supportHand.rotation.set(-0.18 + wave * 0.06, 0, 0.08);
+                        bolt.position.x = pull * 0.22;
+                        bolt.rotation.y = lift * 0.45;
+                    }
+                    if (rp >= 1) {
+                        playerWeapon.userData.reloadStarted = 0;
+                        playerHand.position.copy(playerHand.userData.basePosition);
+                        playerHand.rotation.set(0,0,0);
+                        supportHand.position.copy(supportHand.userData.basePosition);
+                        supportHand.rotation.set(-0.18,0,0.08);
+                        if(playerWeapon.userData.sniperBolt){playerWeapon.userData.sniperBolt.position.x=0;playerWeapon.userData.sniperBolt.rotation.y=0;}
+                    }
+                } else {
+                    playerHand.position.copy(playerHand.userData.basePosition);
+                    playerHand.rotation.set(0,0,0);
+                    supportHand.position.copy(supportHand.userData.basePosition);
+                    supportHand.rotation.set(-0.18,0,0.08);
+                }
+                if (playerWeapon.userData.inspectUntil > weaponNow) {
+                    const ip = (weaponNow-playerWeapon.userData.inspectStarted)/(playerWeapon.userData.inspectUntil-playerWeapon.userData.inspectStarted);
+                    const wave = Math.sin(ip*Math.PI);
+                    if (playerWeapon.userData.inspectVariant !== 'toss') {
+                        playerWeapon.position.y += wave*0.18;
+                        playerWeapon.rotation.z += wave*0.32;
+                        playerWeapon.rotation.x += wave*0.18;
+                    }
+                    const smooth = t => { t=Math.max(0,Math.min(1,t)); return t*t*(3-2*t); };
+                    if (playerWeapon.userData.inspectType === 'butterfly_knife') {
+                        const right = (playerWeapon.userData.butterflyHandles||[]).find(h => h.userData.side === 1);
+                        const left = (playerWeapon.userData.butterflyHandles||[]).find(h => h.userData.side === -1);
+                        if (playerWeapon.userData.inspectVariant === 'toss') {
+                            // Подброс: нож покидает ладонь, делает полный оборот и возвращается в хват.
+                            const flight = Math.max(0, Math.min(1, (ip-0.12)/0.72));
+                            const arc = Math.sin(flight*Math.PI);
+                            const tossModel = playerWeapon.userData.tossModel;
+                            const startPos = playerWeapon.userData.tossStartPosition;
+                            const startQuat = playerWeapon.userData.tossStartQuaternion;
+                            const cameraOffset = playerWeapon.userData.tossCameraOffset;
+                            // Базовая точка следует за камерой: нож не остаётся позади,
+                            // если игрок идёт или поворачивается во время подброса.
+                            if (tossModel && startPos && startQuat) {
+                                camera.updateMatrixWorld(true);
+                                const camRight = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion).normalize();
+                                const camUp = new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion).normalize();
+                                const followPos = cameraOffset ? camera.localToWorld(cameraOffset.clone()) : startPos.clone();
+                                tossModel.position.copy(followPos)
+                                    .addScaledVector(camRight, 0.52*arc)
+                                    .addScaledVector(camUp, 0.95*arc);
+                                tossModel.quaternion.copy(startQuat)
+                                    .multiply(new THREE.Quaternion().setFromAxisAngle(camRight, flight*Math.PI*2));
+                                tossModel.rotateZ(Math.sin(flight*Math.PI)*0.42);
+                            }
+                            // Рукоятки бабочки независимо раскрываются и складываются в полёте.
+                            if (right) right.rotation.set((right.userData.restX||0)+Math.sin(flight*Math.PI*2)*3.0+arc*1.15, 0.18*arc, 0.12*arc);
+                            if (left) left.rotation.set((left.userData.restX||0)-Math.sin(flight*Math.PI*2+0.8)*2.8-arc*0.9, -0.16*arc, -0.10*arc);
+                            // Кисть слегка готовится поймать нож: поднимается и
+                            // разворачивается к нему, затем возвращается в исходный хват.
+                            const catchPrep = Math.sin(flight*Math.PI);
+                            playerHand.rotation.set(-0.16*catchPrep, 0.08*catchPrep, -0.22*catchPrep);
+                            playerHand.position.y = playerHand.userData.baseY + 0.055*catchPrep;
+                        } else {
+                            // Профессиональный флип: рукоятки последовательно складываются и раскрываются.
+                            const fold = smooth(ip/0.22)*2.95;
+                            const release = smooth((ip-0.57)/0.25)*2.85;
+                            if (right) right.rotation.set(0.12 + fold - release, 0.10 + Math.sin(ip*Math.PI)*0.22, 0.06);
+                            if (left) {
+                                const counter = Math.sin(Math.max(0,Math.min(1,(ip-0.16)/0.62))*Math.PI);
+                                left.rotation.set(-0.10-counter*1.55, -0.12-counter*0.30, -0.08);
+                            }
+                            const rollPhase = smooth((ip-0.20)/0.46);
+                            const fullTurn = rollPhase * Math.PI * 2;
+                            playerHand.rotation.z = fullTurn;
+                            playerHand.rotation.x = Math.sin(rollPhase*Math.PI)*0.34;
+                            playerWeapon.rotation.z += fullTurn;
+                            playerWeapon.rotation.y += Math.sin(rollPhase*Math.PI)*0.82;
+                            playerWeapon.rotation.x += Math.sin(rollPhase*Math.PI)*0.46;
+                            playerWeapon.position.y += Math.sin(rollPhase*Math.PI)*0.13;
+                        }
+                    } else if (playerWeapon.userData.inspectType === 'stiletto') {
+                        const stiletto = playerWeapon.children.find(ch => ch.userData && ch.userData.isStiletto);
+                        if (stiletto && stiletto.userData.stilettoBlade) {
+                            // Складной механизм: клинок разворачивается на 180° и полностью заходит в рукоять.
+                            const close = smooth(ip / 0.38);
+                            const open = smooth((ip - 0.62) / 0.38);
+                            const fold = Math.PI * close * (1 - open);
+                            stiletto.userData.stilettoBlade.rotation.y = fold;
+                        }
+                        playerWeapon.rotation.y += Math.sin(ip*Math.PI*2)*0.32;
+                    } else if (playerWeapon.userData.inspectType === 'm9_bayonet') {
+                        // M9 делает один полный оборот вокруг ладони.
+                        const m9Pivot = playerWeapon.userData.m9SpinPivot;
+                        if (m9Pivot) {
+                            // Вращение вокруг поперечной оси (Y), проходящей через
+                            // центр хвата: нож обходит ладонь, а не крутится вдоль клинка.
+                            m9Pivot.rotation.set(0, ip * Math.PI * 2, 0);
+                        }
+                        playerHand.rotation.x = -0.10 + Math.sin(ip*Math.PI)*0.08;
+                        playerWeapon.position.y += Math.sin(ip*Math.PI)*0.035;
+                    } else if (playerWeapon.userData.inspectType === 'karambit') {
+                        // Керамбит делает один оборот в вертикальной плоскости — на 90° к движению M9.
+                        const pivot = playerWeapon.userData.karambitSpinPivot;
+                        if (pivot) pivot.rotation.set(ip * Math.PI * 2, 0, 0);
+                        playerHand.rotation.z = Math.sin(ip*Math.PI)*0.08;
+                        playerWeapon.position.y += Math.sin(ip*Math.PI)*0.025;
+                    } else if (playerWeapon.userData.inspectType === 'knife') {
+                        playerWeapon.rotation.y += Math.sin(ip*Math.PI*2)*0.55;
+                    } else {
+                        playerWeapon.rotation.y += Math.sin(ip*Math.PI*2)*0.28;
+                    }
+                } else {
+                    // Возвращаем отделённую модель в хват после завершения подброса.
+                    const tossed = playerWeapon.userData.tossModel;
+                    const local = playerWeapon.userData.tossLocal;
+                    if (tossed && local) {
+                        playerWeapon.attach(tossed);
+                        tossed.position.copy(local.position);
+                        tossed.quaternion.copy(local.quaternion);
+                        tossed.scale.copy(local.scale);
+                        delete playerWeapon.userData.tossModel;
+                        delete playerWeapon.userData.tossLocal;
+                        delete playerWeapon.userData.tossStartPosition;
+                        delete playerWeapon.userData.tossStartQuaternion;
+                    }
+                    playerHand.rotation.set(0,0,0);
+                    if (playerHand.userData.baseY !== undefined) playerHand.position.y = playerHand.userData.baseY;
+                    if (playerWeapon.userData.butterflyHandles) {
+                    playerWeapon.userData.butterflyHandles.forEach(handle => {
+                        handle.rotation.set(handle.userData.restX||0, 0, 0);
+                    });
+                    }
+                    if (playerWeapon.userData.m9SpinPivot) playerWeapon.userData.m9SpinPivot.rotation.set(0,0,0);
+                    if (playerWeapon.userData.karambitSpinPivot) playerWeapon.userData.karambitSpinPivot.rotation.set(0,0,0);
+                    const stilettoModel = playerWeapon.children.find(ch => ch.userData && ch.userData.isStiletto);
+                    if (stilettoModel && stilettoModel.userData.stilettoBlade) {
+                        stilettoModel.userData.stilettoBlade.rotation.set(0,0,0);
+                    }
+                }
+
+                if (grabbedObj) {
+                    const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+                    grabbedObj.position.copy(camera.position).add(dir.multiplyScalar(grabbedDist));
+                    if (database && grabbedObj.userData.networkId) {
+                        database.ref(`rooms/${currentRoomId}/props/${grabbedObj.userData.networkId}`).update({
+                            x: grabbedObj.position.x, y: grabbedObj.position.y, z: grabbedObj.position.z
+                        });
+                    }
+                }
+
+                if (chatInput.style.display !== 'block' && weaponMenu.style.display !== 'block') {
+                    if (Date.now() - lastSyncTime > 50) {
+                        syncNetwork();
+                        lastSyncTime = Date.now();
+                    }
+
+                    if (isShooting && currentWeapon === 'rifle' && !isReloading && ammo > 0) {
+                        const now = Date.now();
+                        if (now - lastAutoShotTime > 100) { 
+                            const dir = new THREE.Vector3();
+                            camera.getWorldDirection(dir);
+                            shoot(camera.position, dir);
+                            lastAutoShotTime = now;
+                        }
+                    } else if (isShooting && ammo <= 0) {
+                        isShooting = false;
+                    }
+
+                    velocity.x -= velocity.x * 10.0 * delta;
+                    velocity.z -= velocity.z * 10.0 * delta;
+                    velocity.y -= 9.8 * 6.0 * delta;                    direction.z = Number(moveForward) - Number(moveBackward);
+                    direction.x = Number(moveRight) - Number(moveLeft);
+                    direction.normalize();
+                    if (moveForward || moveBackward) velocity.z -= direction.z * 110.0 * delta;
+                    if (moveLeft || moveRight) velocity.x -= direction.x * 110.0 * delta;
+                    
+                    const oldPos = camera.position.clone();
+                    controls.moveRight(-velocity.x * delta);
+                    controls.moveForward(-velocity.z * delta);
+                    
+                    for(let p of props) {
+                        const dist = new THREE.Vector2(camera.position.x - p.position.x, camera.position.z - p.position.z).length();
+                        if(dist < 1.0) { 
+                            camera.position.x = oldPos.x;
+                            camera.position.z = oldPos.z;
+                        }
+                    }
+                    for(let m of mapObjects) {
+                        const dist = new THREE.Vector2(camera.position.x - m.position.x, camera.position.z - m.position.z).length();
+                        if(dist < m.userData.bound) { 
+                            camera.position.x = oldPos.x;
+                            camera.position.z = oldPos.z;
+                        }
+                    }
+
+                    camera.position.y += (velocity.y * delta);
+                    
+                    // Камера на уровне глаз (1.2 вместо 1.6)
+                    let floorY = 1.2;
+                    for(let p of props) {
+                        const dx = Math.abs(camera.position.x - p.position.x);
+                        const dz = Math.abs(camera.position.z - p.position.z);
+                        
+                        let propHeight = 0;
+                        if(p.userData.type === 'table') propHeight = 1.3;
+                        else if(p.userData.type === 'tv') propHeight = 1.5;
+                        else if(p.userData.type === 'chair') propHeight = 1.2;
+                        else propHeight = 0.5;
+
+                        let bound = (p.userData.type === 'table') ? 1.5 : 1.0;
+                        if (dx < bound && dz < bound) {
+                            const top = p.position.y + (propHeight * 0.5) + 1.4; 
+                            if (camera.position.y >= top - 1.0) {
+                                floorY = Math.max(floorY, top);
+                            }
+                        }
+                    }
+
+                    for(let m of mapObjects) {
+                        const dx = Math.abs(camera.position.x - m.position.x);
+                        const dz = Math.abs(camera.position.z - m.position.z);
+                        if (dx < m.userData.bound && dz < m.userData.bound) {
+                            const top = m.userData.top;
+                            if (camera.position.y >= top - 1.0) {
+                                floorY = Math.max(floorY, top);
+                            }
+                        }
+                    }
+
+                    if (camera.position.y < floorY) { 
+                        velocity.y = 0; 
+                        camera.position.y = floorY; 
+                        canJump = true; 
+                    }
+                }
+
+                for (let id in remotePlayers) {
+                    const p = remotePlayers[id];
+                    // Анимация пропеллера для других игроков
+                    if (p.userData.hatGroup) {
+                        const prop = p.userData.hatGroup.children.find(c => c.userData.isPropeller);
+                        if (prop) prop.rotation.y += 0.3;
+                    }
+                    
+                    const prevPos = p.userData.prevPos || p.position.clone();
+                    const isMoving = p.position.distanceTo(prevPos) > 0.02;
+
+                    applyEmotionAnims(p, p.userData.emotion || 'none', isMoving);
+
+                    if (isMoving) {
+                        p.userData.leftLeg.rotation.x = 0;
+                        p.userData.rightLeg.rotation.x = 0;
+                        p.userData.headGroup.position.y = 0.9;
+                        p.userData.headGroup.rotation.z = 0;
+                    } else {
+                        p.userData.leftLeg.rotation.x = 0;
+                        p.userData.rightLeg.rotation.x = 0;
+                        p.userData.headGroup.position.y = 0.9;
+                        p.userData.headGroup.rotation.z = 0;
+                    }
+                    p.userData.prevPos = p.position.clone();
+
+                    p.children.forEach(c => {
+                        if (c instanceof THREE.Sprite || c.userData.isHPBar) {
+                            c.lookAt(camera.position);
+                        }
+                    });
+                }
+
+                enemies.forEach(en => {
+                    const sDir = new THREE.Vector3().subVectors(camera.position, en.position).normalize();
+                    en.lookAt(camera.position.x, en.position.y, camera.position.z);
+                });
+
+                // Анимация NPC
+                props.forEach(p => {
+                    if (p.userData.isNPC) {
+                        const chicken = p.children.find(c => c.userData.headGroup);
+                        if (chicken) {
+                            applyEmotionAnims(chicken, p.userData.emotion || 'none', false);
+                        }
+                    }
+                });
+
+                for(let i = bullets.length - 1; i >= 0; i--) {
+                    const b = bullets[i]; b.position.add(b.userData.velocity);
+                    if(b.position.length() > 200) { scene.remove(b); bullets.splice(i, 1); continue; }
+
+                    // Ракета гранатомёта: взрывается при столкновении с чем угодно
+                    if (b.userData.isRocket) {
+                        let boom = false;
+                        if (b.position.y < 0.15) boom = true;
+                        if (!boom) {
+                            for(let m of mapObjects) {
+                                const dxz = new THREE.Vector2(b.position.x - m.position.x, b.position.z - m.position.z).length();
+                                if (dxz < m.userData.bound && b.position.y < m.userData.top) { boom = true; break; }
+                            }
+                        }
+                        if (!boom) {
+                            for(let p of props) {
+                                if (b.position.distanceTo(p.position) < 1.4) { boom = true; break; }
+                            }
+                        }
+                        if (!boom) {
+                            for(let id in remotePlayers) {
+                                const rp = remotePlayers[id];
+                                if (b.position.distanceTo(rp.position.clone().add(new THREE.Vector3(0, 1, 0))) < 1.4) { boom = true; break; }
+                            }
+                        }
+                        if (boom) {
+                            explode(b.position.clone(), b.userData.shooter);
+                            scene.remove(b); bullets.splice(i, 1);
+                            continue;
+                        }
+                        continue;
+                    }
+
+                    for(let id in remotePlayers) {
+                        const rp = remotePlayers[id];
+                        if (b.position.distanceTo(rp.position.clone().add(new THREE.Vector3(0, 1, 0))) < 1.2) {
+                            scene.remove(b); bullets.splice(i, 1);
+                            if (database) {
+                                const targetHPRef = database.ref(`rooms/${currentRoomId}/players/${id}/hp`);
+                                targetHPRef.transaction((current) => {
+                                    let oldVal = (typeof current === 'object') ? (current.val ?? 100) : (current ?? 100);
+                                    if (oldVal <= 0) return;
+                                    const dmg = currentWeapon === 'sniper' ? 100 : (currentWeapon === 'ak47' ? 25 : 20);
+                                    return { val: Math.max(0, oldVal - dmg), by: nickInput.value || 'Player' };
+                                }, (error, committed, snapshot) => {
+                                    if (committed) {
+                                        const res = snapshot.val();
+                                        if (res && res.val <= 0) {
+                                            score += 50; teamPoints++;
+                                            document.getElementById('score').innerText = score;
+                                            document.getElementById('team-score').innerText = teamPoints;
+                                        }
+                                    }
+                                });
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                for(let i = enemyBullets.length - 1; i >= 0; i--) {
+                    const b = enemyBullets[i]; b.position.add(b.userData.velocity);
+                    if(b.position.distanceTo(camera.position) < 1.2) {
+                        health -= 20; hpFill.style.width = Math.max(0, health) + '%';
+                        scene.remove(b); enemyBullets.splice(i, 1);
+                        if(health <= 0) {
+                            addChatMessage(`${b.userData.shooter} ➔ ${nickInput.value}`, 'kill');
+                            enemyPoints++; isPlaying = false;
+                            try { controls.unlock(); } catch (_) {}
+                            if (playerModel?.userData.weaponGroup) playerModel.userData.weaponGroup.visible = false;
+                            if (playerWeapon) playerWeapon.visible = false;
+                            if (database && currentRoomId && myPlayerId) database.ref(`rooms/${currentRoomId}/players/${myPlayerId}`).update({alive:false, hp:{val:0, by:b.userData.shooter}});
+                            killerNameDisplay.innerText = b.userData.shooter;
+                            deathScreen.style.display = 'flex';
+                            syncMobileControls();
+                        }
+                        continue;
+                    }
+                    if(b.position.length() > 200) { scene.remove(b); enemyBullets.splice(i, 1); }
+                }
+            }
+            // Съёмка с камер-предметов и вывод на экраны (как в оригинале: экран и камера двигаются отдельно)
+            const camProps = props.filter(p => p.userData.isCamera);
+            const screenProps = props.filter(p => p.userData.isScreen);
+            screenProps.forEach(sp => {
+                // Сначала пробуем найти связанную камеру по networkId
+                let camProp = null;
+                if (sp.userData.linkedCamera) {
+                    camProp = sp.userData.linkedCamera;
+                } else if (sp.userData.linkedCameraId) {
+                    camProp = props.find(p => p.userData.networkId === sp.userData.linkedCameraId && p.userData.isCamera);
+                }
+                // Fallback: ближайшая камера
+                if (!camProp && camProps.length > 0) {
+                    let bestDist = Infinity;
+                    camProps.forEach(cp => {
+                        const d = cp.position.distanceTo(sp.position);
+                        if (d < bestDist) { bestDist = d; camProp = cp; }
+                    });
+                }
+                if (camProp && camProp.userData.virtCam) {
+                    if (!sp.userData.rt || sp.userData.rtCam !== camProp) {
+                        if (sp.userData.rt) sp.userData.rt.dispose();
+                        sp.userData.rt = new THREE.WebGLRenderTarget(256, 144);
+                        sp.userData.rtCam = camProp;
+                        if (!sp.userData.screenMesh.material.map) {
+                            sp.userData.screenMesh.material = new THREE.MeshBasicMaterial({ map: sp.userData.rt.texture });
+                        }
+                    }
+                    // Спрятать самого игрока и его пушку на время съёмки, чтобы не светились в кадре
+                    // (в 1-м лице тело и так скрыто от игрока, а тут он может попасть в кадр камеры)
+                    const pVisible = playerModel ? playerModel.visible : false;
+                    const wVisible = playerWeapon ? playerWeapon.visible : false;
+                    const pCamMode = playerModel ? playerModel.userData.camMode : 0;
+                    if (playerModel) playerModel.visible = pVisible && pCamMode > 0;
+                    if (playerWeapon) playerWeapon.visible = wVisible && pCamMode > 0;
+                    renderer.setRenderTarget(sp.userData.rt);
+                    renderer.render(scene, camProp.userData.virtCam);
+                    renderer.setRenderTarget(null);
+                    if (playerModel) playerModel.visible = pVisible;
+                    if (playerWeapon) playerWeapon.visible = wVisible;
+                }
+            });
+
+            // Применяем смещение камеры только на время рендера, чтобы не ломать логику высоты
+            let camOffset = null;
+            if (isPlaying && cameraMode > 0) {
+                const yaw = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ').y;
+                const horizontalRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+                
+                if (cameraMode === 1) {
+                    // За спиной
+                    camOffset = new THREE.Vector3(0, 0.6, 3.5).applyQuaternion(horizontalRotation);
+                } else if (cameraMode === 2) {
+                    // Над плечом (плечо справа)
+                    camOffset = new THREE.Vector3(1.2, 0.5, 2.5).applyQuaternion(horizontalRotation);
+                } else if (cameraMode === 3) {
+                    // Орбитальная - можно крутить мышкой
+                    // Позволяем вертикальный угол
+                    const pitch = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ').x;
+                    const camDistance = 4;
+                    camOffset = new THREE.Vector3(0, 0, camDistance).applyQuaternion(camera.quaternion);
+                }
+                
+                camera.position.add(camOffset);
+            }
+
+            renderer.render(scene, camera);
+
+            if (camOffset) {
+                camera.position.sub(camOffset);
+            }
+        }
+
+        animate();
+        // Инициализация визуальных скинов
+        setFirstPersonWeapon(currentWeapon, equippedWeaponSkins[currentWeapon] || null);
+        setChickenWeapon(playerModel, currentWeapon, equippedWeaponSkins[currentWeapon] || null);
+        setAmmoForWeapon(currentWeapon);
+        [menuChicken, playerModel].forEach(m => {
+            updateHatMesh(m, currentHat);
+            updateGlassMesh(m, currentGlass);
+            updateBeakMesh(m, currentBeak);
+            updateBootMesh(m, currentBoot);
+        });
+        updateShopUI();
+
+        window.setEmotion = (name) => {
+            if (window.targetNPC) {
+                const npc = window.targetNPC;
+                npc.userData.emotion = name;
+                if (database && npc.userData.networkId) {
+                    database.ref(`rooms/${currentRoomId}/props/${npc.userData.networkId}`).update({ emotion: name });
+                }
+                // Сброс эмоции через 5 секунд (кроме танца)
+                if (name !== 'none' && name !== 'dance') {
+                    setTimeout(() => { 
+                        if (npc.userData.emotion === name) {
+                            npc.userData.emotion = 'none';
+                            if (database && npc.userData.networkId) database.ref(`rooms/${currentRoomId}/props/${npc.userData.networkId}`).update({ emotion: 'none' });
+                        }
+                    }, 5000);
+                }
+                window.targetNPC = null;
+            } else {
+                currentEmotion = name;
+            }
+            document.getElementById('emotion-menu').style.display = 'none';
+            const touchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+            if (!touchDevice) controls.lock();
+            touchLookId = null;
+        };
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
